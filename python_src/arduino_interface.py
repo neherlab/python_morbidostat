@@ -6,6 +6,7 @@ import serial
 pump_types = ['medium', 'drug A', 'drug B']
 debug = False
 baudrate = 9600
+light_switch = 54
 
 def serial_setup():
     for i in range(10):
@@ -72,7 +73,8 @@ def measure_voltage(ser, vial, n_measurements=1, dt=10):
         # wait and read the response of the arduino
         time_delay = (n_measurements*dt + 10.0)*0.001  #seconds
         time.sleep(time_delay)
-        print ser.inWaiting()
+        if debug:
+            print ser.inWaiting()
         measurement = ser.readline()
         if debug:
             print(str(time.time())+" in: "+measurement) 
@@ -118,10 +120,10 @@ def run_pump(ser, pump_type='medium', pump_number=0, run_time=0.1):
             digital_pin = pump_to_pin(pump_type, pump_number)
             if run_time>0:
                 # switch pump on
-                switch_pin(ser, digital_pin, True)
+                switch_pin(ser, digital_pin, False)
                 # generate a time object to switch the pump off after 
                 # the time interval necessary to pump the required volume
-                pump_off = threading.Timer(run_time, switch_pin, args=(ser, digital_pin, False))
+                pump_off = threading.Timer(run_time, switch_pin, args=(ser, digital_pin, True))
                 pump_off.start()
     else:
         print("Serial port is not open")

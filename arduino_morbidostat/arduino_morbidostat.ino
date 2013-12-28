@@ -14,8 +14,9 @@ void setup()
   input_string.reserve(200);
   //set up digital out pins
   int digital_pin;
-  for (digital_pin=0; digital_pin<45; digital_pin++){
+  for (digital_pin=7; digital_pin<54; digital_pin++){
     pinMode(digital_pin, OUTPUT);
+    digitalWrite(digital_pin, HIGH);    
   }
 }
 
