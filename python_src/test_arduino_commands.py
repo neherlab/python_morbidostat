@@ -11,9 +11,10 @@ if ser:
 else:
     print("serial port not available")
 
-for pin in range(7,54):
+for pin in range(30,40):
+    print pin
     morb.run_pump(ser, 'medium', pin, 1)
-    time.sleep(2)
+    time.sleep(1.2)
 
 #for i in xrange(10000):
 #    m,v,c = morb.measure_voltage(ser, 0, 10, 10)
