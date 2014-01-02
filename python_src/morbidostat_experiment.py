@@ -4,7 +4,6 @@ import time
 from __future__ import division
 import copy
 
-
 def morbidostat:
     '''
     Running a morbidostat experiment. 
