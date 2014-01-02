@@ -16,24 +16,52 @@ pumps = {'medium': range(7,7+15),
 class morbidostat:
 
     def __init__(self):
-        for i in range(10):
-            try:
-                self.ser = serial.Serial('/dev/ttyACM'+str(i), baudrate, timeout = 1.0)
-                if self.ser.isOpen():
-                    print("Serial /dev/ttyACM"+str(i)+" opened")
-                    # wait a second to let the serial port get up to speed
-                    time.sleep(1)
-                    self.morbidostat_OK = True
-            except:
-                if i<9:
-                    print("Serial /dev/ttyACM"+str(i)+" not available, trying next")
-                else:
-                    print("Opening serial port failed")
-                self.morbidostat_OK = False
-
+        self.connect()
         self.pump_off_threads = {}
         self.light_state = False
 
+    def connect(self):
+        '''
+        open a serial connection to the arduino. look for it on different 
+        serial ports. if it is not found on the first ten trials, give
+        up.
+        '''
+        try_next = True
+        port_number=0
+        while try_next:
+            try:
+                self.ser = serial.Serial('/dev/ttyACM'+str(port_number), baudrate, timeout = 1.0)
+                if self.ser.isOpen():
+                    print("Serial /dev/ttyACM"+str(port_number)+" opened")
+                    # wait a second to let the serial port get up to speed
+                    time.sleep(1)
+                    self.morbidostat_OK = True
+                    try_next=False
+            except:
+                if i<10:
+                    print("Serial /dev/ttyACM"+str(port_number)+" not available, trying next")
+                    try_next=True
+                else:
+                    print("Opening serial port failed")
+                    try_next=False
+                self.morbidostat_OK = False
+        return port_number
+
+    def disconnect(self):
+        '''
+        close the serial port
+        '''
+        if self.ser.isOpen():
+            # wait for all threads to finish
+            while any([t.is_alive() for k,t in self.pump_off_threads.iteritems()]):
+                print("\n Before disconnecting waiting for ")
+                for k,t in self.pump_off_threads.iteritems():
+                    if t.is_alive():
+                        print(str(k)+ "\tto finish") 
+                time.sleep(1)
+            self.ser.close()
+            self.morbidostat_OK=False
+            
     def pump_to_pin(self, pump_type, pump_number):
         assert pump_type in pumps, "Bad pump type: "+str(pump_type)
         assert pump_number>=0 and pump_number<15, "Bad pump number, got "+str(pump_number)
@@ -132,10 +160,10 @@ class morbidostat:
             digital_pin = self.pump_to_pin(pump_type, pump_number)
             if run_time>0:
                 # switch pump on
-                self.switch_pin(ser, digital_pin, False)
+                self.switch_pin(digital_pin, False)
                 # generate a time object to switch the pump off after 
                 # the time interval necessary to pump the required volume
-                self.pump_off_threads[(pump_type,pump_number)] = threading.Timer(run_time, switch_pin, args=(ser, digital_pin, True))
+                self.pump_off_threads[(pump_type,pump_number)] = threading.Timer(run_time, self.switch_pin, args=(digital_pin, True))
                 self.pump_off_threads[(pump_type,pump_number)].start()
         else:
             print("Serial port is not open")
@@ -148,7 +176,7 @@ class morbidostat:
             command_str = 'D'+'{number:0{width}d}'.format(number=pin_number, width=2) + '1\n'
         else:
             command_str = 'D'+'{number:0{width}d}'.format(number=pin_number, width=2) + '0\n'
-        bytes_written = ser.write(command_str)
+        bytes_written = self.ser.write(command_str)
 
         if debug:
             print(str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)) 
