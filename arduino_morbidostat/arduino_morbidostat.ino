@@ -55,7 +55,7 @@ void measure_analog(){
   }
 }
 
-void switch_pump(){
+void switch_digital(){
   int digital_pin = input_string.substring(1,3).toInt();
   char pin_state = input_string[3];
   if (pin_state=='1'){
@@ -63,10 +63,10 @@ void switch_pump(){
   }else if (pin_state=='0'){
     digitalWrite(digital_pin,LOW);
   }else{
-    Serial.print("error: switch_pump() received bad pin state: ");
+    Serial.print("error: switch_digital() received bad pin state: ");
     Serial.println(input_string);
   }
-  Serial.print("pump\t");
+  Serial.print("D\t");
   Serial.print(digital_pin);
   Serial.print('\t');
   Serial.println(pin_state);
@@ -77,7 +77,7 @@ void loop()
   if (string_complete){
     switch (input_string[0]){
     case 'A': {measure_analog(); break;}
-    case 'P': {switch_pump(); break;}
+    case 'D': {switch_pump(); break;}
     default: {Serial.println("error: unknown command"); break;}
     }  
     input_string="";
