@@ -19,6 +19,7 @@ class morbidostat:
         self.connect()
         self.pump_off_threads = {}
         self.light_state = False
+        self.mixing_time = 5 # mixing time in seconds
 
     def connect(self):
         '''
@@ -46,6 +47,16 @@ class morbidostat:
                     try_next=False
                 self.morbidostat_OK = False
         return port_number
+
+    def wait_until_mixed(self):
+        '''
+        waits for the completion of all pumps by joining the 
+        pump off threads
+        '''
+        tmp_last_pump_off_time = 0
+        for k,t in self.pump_off_threads.iteritems():
+            t.join()
+        time.sleep(self.mixing_time)
 
     def disconnect(self):
         '''
