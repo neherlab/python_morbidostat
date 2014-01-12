@@ -18,19 +18,30 @@ class morbidostat:
         self.IC50 = np.zeros(self.n_cultures)
         self.antibiotic = np.zeros(self.n_cultures)
         self.max_growth_rate = np.zeros(self.n_cultures)
+        self.mixing_time = 1
         self.time = 0
         self.dt = 10.0
-        self.concA = 1.0
-        self.concB = 5.0
+        self.concA = 0.3
+        self.concB = 2.0
         self.volume = 10.0
         self.second = 1.0
 
 
-    def wait_until_mixed():
+    def wait_until_mixed(self):
         ''' 
         function not needed in a simulator, included for compatibility
         '''
         return
+
+    def connect(self):
+        self.morbidostat_OK=True
+        self.set_up_and_start()
+        return 0
+
+    def disconnect(self):
+        self.morbidostat_OK=False
+        return 0
+
 
     def growth_rate(self):
         '''
@@ -38,7 +49,7 @@ class morbidostat:
         '''
         return self.max_growth_rate/(1+(self.antibiotic/self.IC50)**2)
 
-    def set_up_and_start(self, OD_init=0.01, IC50_init=0.1, antibiotic_init=0, max_growth_rate_init=0.02, final_time):
+    def set_up_and_start(self, OD_init=0.01, IC50_init=0.1, antibiotic_init=0, max_growth_rate_init=0.001, final_time = 24*60*60):
         '''
         copies initial conditions into the local arrays, sets the duration of the 
         experiments and starts it
@@ -58,10 +69,10 @@ class morbidostat:
         time is reached. it update OD via a geometric increments and changes 
         the IC50 by random additive increments (this is the evolution part)
         '''
-        while self.time<self.final_time:
+        while self.time<self.final_time and self.morbidostat_OK:
             self.OD+=self.dt*self.growth_rate()*self.OD*(1+0.1*np.random.randn(self.n_cultures))
-            self.IC50+=0.1*(np.random.random(self.n_cultures)<0.1/(1+np.exp((self.IC50-self.antibiotic)*100))
-                            )*np.random.standard_exponential(self.n_cultures)
+            self.IC50+=0.1*(np.random.random(self.n_cultures)<0.02/(1+np.exp((self.IC50-self.antibiotic)*100))
+                            )*np.random.standard_exponential(self.n_cultures)*(1-self.IC50)
             time.sleep(1.0*self.dt*self.second)
             self.time+=self.dt
 
@@ -70,8 +81,10 @@ class morbidostat:
         '''
         return the simulated OD values
         '''
-        return self.OD[vial]+0.01*np.random.randn()
+        return max(0.004,self.OD[vial]+0.001*np.random.randn())
 
+    def switch_light(self, state):
+        pass
 
     def inject_volume(self, pump_type='medium', pump_number=0, volume=0.1):
         ''' 
