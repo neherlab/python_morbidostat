@@ -3,6 +3,8 @@ import morbidostat_simulator as morb
 import numpy as np
 import time,copy,threading
 import matplotlib.pyplot as plt
+from matplotlib import animation
+
 from scipy import stats
 #plt.ion()
 debug = False
@@ -23,7 +25,7 @@ class morbidostat:
     
     def __init__(self, vials = range(15), experiment_duration = 2*60*60, 
                  target_OD = 0.1, diluation_factor = 0.9, bug = '', drug ='',
-                 drugA_concentration = 0.0, drugB_concentration = 0.0):
+                 drugA_concentration = 0.3, drugB_concentration = 2.0):
 
         # all times in seconds, define parameter second to speed up for testing
         self.second = 0.01
@@ -65,7 +67,7 @@ class morbidostat:
 
         self.OD = np.zeros((self.n_cycles, self.ODs_per_cycle, self.n_vials+1), dtype = float)
         self.decisions = np.zeros((self.n_cycles, self.n_vials+1), dtype = int)
-        self.vial_drug_concentration = np.zeros((self.n_cycles, self.n_vials+1), dtype = float)
+        self.vial_drug_concentration = np.zeros((self.n_cycles+1, self.n_vials+1), dtype = float)
         self.historical_drug_A_concentration = []
         self.historical_drug_B_concentration = []
         self.last_OD_measurements = np.zeros((self.ODs_per_cycle,self.n_vials+1))
@@ -110,8 +112,12 @@ class morbidostat:
     def start_experiment(self):
         self.cycle_thread = threading.Thread(target = self.run_morbidostat)
         if self.display_OD:
-            self.plot_thread = threading.Thread(target = self.plot_OD)
-            self.plot_thread.start()
+            n_cols = 3
+            n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
+            self.data_figure = plt.figure(figsize = (n_cols*3, n_rows*3))
+            self.OD_animation = animation.FuncAnimation(self.data_figure, self.update_plot, init_func=self.init_data_plot, interval=500)
+            #self.plot_thread = threading.Thread(target = self.plot_OD)
+            #self.plot_thread.start()
         self.experiment_start = time.time()
         self.cycle_thread.start()
         
@@ -249,6 +255,12 @@ class morbidostat:
             
             if tmp_decision[1]>0:
                 self.morb.inject_volume(tmp_decision[0], vial, self.dilution_volume)
+                self.vial_drug_concentration[self.cycle_counter+1,vi]=self.vial_drug_concentration[self.cycle_counter,vi]*self.dilution_factor
+                if tmp_decision==dilute_w_drugA:
+                    self.vial_drug_concentration[self.cycle_counter+1,vi]+=self.drugA_concentration*(1-self.dilution_factor)
+                elif tmp_decision==dilute_w_drugB:
+                    self.vial_drug_concentration[self.cycle_counter+1,vi]+=self.drugB_concentration*(1-self.dilution_factor)
+
                 self.decisions[self.cycle_counter,vial] = tmp_decision[1]
 
 
@@ -262,43 +274,50 @@ class morbidostat:
     def init_data_plot(self):
         n_cols = 3
         n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
-        self.data_figure = plt.figure(figsize = (n_cols*3, n_rows*3))
         plt.subplots_adjust(hspace = .001,wspace = .001)
         
         vi = 0
         self.subplots = {}
         self.plotted_line_objects = {}
         for vi, vial  in enumerate(self.vials):
-            self.subplots[vi] = plt.subplot(n_rows, n_cols, vi+1)
+            self.subplots[vi] = [plt.subplot(n_rows, n_cols, vi+1)]
+            self.subplots[vi].append(self.subplots[vi][0].twinx())
+            self.plotted_line_objects[vi] = [self.subplots[vi][0].plot([],[], c='b')[0], self.subplots[vi][1].plot([],[], c='r')[0]]
+
             if vi%n_cols:
-                self.subplots[vi].set_yticklabels([])
+                self.subplots[vi][0].set_yticklabels([])
+            if vi%n_cols<n_cols-1:
+                self.subplots[vi][1].set_yticklabels([])
             if int(np.ceil(1.0*self.n_vials/n_cols))<n_rows:
-                self.subplots[vi].set_xticklabels([])
-            self.plotted_line_objects[vi] = plt.plot([],[])
+                self.subplots[vi][0].set_xticklabels([])
 
         plt.show()
 
 
-    def update_plot(self):
+    def update_plot(self, dummy):
         n_cycles_to_show = 5
         display_unit = 60
         first_plot_cycle = max(0,self.cycle_counter-n_cycles_to_show)
         last_plot_cycle = first_plot_cycle+n_cycles_to_show
 
         max_OD = 0
+        max_AB = 0
         for vi, vial  in enumerate(self.vials):
             x_data = np.zeros(n_cycles_to_show*self.ODs_per_cycle)
             y_data = np.zeros(n_cycles_to_show*self.ODs_per_cycle)
-
+            y_alt_data = np.zeros(n_cycles_to_show*self.ODs_per_cycle)
             for cii, ci in enumerate(range(first_plot_cycle, last_plot_cycle)):
                 x_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle] = self.OD[ci][:,-1]/display_unit
-                y_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle] = self.OD[ci][:,vi]                
+                y_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle] = self.OD[ci][:,vi]
+                y_alt_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle] = self.vial_drug_concentration[ci,vi]                
        
             max_OD = max(max_OD, np.max(y_data))
-            self.plotted_line_objects[vi][0].set_ydata(y_data)
-            self.plotted_line_objects[vi][0].set_xdata(x_data)        
+            max_AB = max(max_AB, np.max(y_alt_data))
+            self.plotted_line_objects[vi][0].set_data(x_data, y_data)
+            self.plotted_line_objects[vi][1].set_data(x_data, y_alt_data)
 
         for vi, vial  in enumerate(self.vials):
-            self.subplots[vi].set_ylim([0,max_OD*1.2+0.01])
-            self.subplots[vi].set_xlim([np.min(x_data), np.max(x_data)+self.OD_dt/display_unit])
-        #plt.draw()
+            self.subplots[vi][0].set_ylim([0,max_OD*1.2+0.01])
+            self.subplots[vi][0].set_xlim([np.min(x_data), np.max(x_data)+self.OD_dt/display_unit])
+            self.subplots[vi][1].set_ylim([0,max_AB*1.2+0.01])
+        plt.draw()
