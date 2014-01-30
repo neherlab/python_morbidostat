@@ -77,7 +77,7 @@ void loop()
   if (string_complete){
     switch (input_string[0]){
     case 'A': {measure_analog(); break;}
-    case 'D': {switch_pump(); break;}
+    case 'D': {switch_digital(); break;}
     default: {Serial.println("error: unknown command"); break;}
     }  
     input_string="";
