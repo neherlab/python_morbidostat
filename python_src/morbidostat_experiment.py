@@ -9,7 +9,7 @@ from scipy import stats
 #plt.ion()
 debug = False
 
-do_nothing = ('',1)
+do_nothing = ('as is',1)
 dilute_w_medium = ('medium',2)
 dilute_w_drugA = ('drug A', 3)
 dilute_w_drugB = ('drug B', 4)
@@ -93,6 +93,7 @@ class morbidostat:
         self.drug_conc_fname = self.base_name+'_vials_drug_concentrations.txt'
         self.display_OD = True
         self.stopped=False
+        self.interrupted =False
         # data acqusition specifics
         self.n_reps=1
         self.rep_dt = 0.001
@@ -114,12 +115,30 @@ class morbidostat:
         if self.display_OD:
             n_cols = 3
             n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
-            self.data_figure = plt.figure(figsize = (n_cols*3, n_rows*3))
-            self.OD_animation = animation.FuncAnimation(self.data_figure, self.update_plot, init_func=self.init_data_plot, interval=500)
+            self.data_figure = plt.figure(figsize = (n_cols*3, min(12,n_rows*3)))
+            self.OD_animation = animation.FuncAnimation(self.data_figure, self.update_plot, 
+                                                        init_func=self.init_data_plot, interval = 10000)
+            plt.draw()
+            plt.show()
             #self.plot_thread = threading.Thread(target = self.plot_OD)
             #self.plot_thread.start()
         self.experiment_start = time.time()
         self.cycle_thread.start()
+        
+    def stop_experiment(self):
+        '''
+        set the stop signal and wait for threads to finish
+        '''
+        self.stopped = True
+        if self.cycle_counter<self.n_cycles:
+            print "Stopping the cycle thread, waiting for cycle to finish"
+            self.cycle_thread.join()
+
+        if self.display_OD:
+            self.data_figure
+        
+        print "experiment has finished. disconnecting the morbidostat"
+        self.morb.disconnect()
         
     def interrupt_experiment(self):
         '''
@@ -127,7 +146,12 @@ class morbidostat:
         this should stop after the OD measurement and growth rate estimate,
         but before the dilutions (but this is not essential)
         '''
-        self.stopped = True
+        self.interrupted = True
+        if self.cycle_counter<self.n_cycles:
+            print "Stopping the cycle thread, waiting for cycle to finish"
+            self.cycle_thread.join()
+        print "recording stopped, safe to disconnect"
+
 
     def resume_experiment(self):
         '''
@@ -135,13 +159,20 @@ class morbidostat:
         will start with OD measurements for one full cycle and continue as
         if from the beginning
         '''
-        pass
+        if self.interrupted:
+            self.cycle_thread = threading.Thread(target = self.run_morbidostat)
+            self.interrupted=False
+            self.cycle_thread.start()
+            print "morbidostat restarted in cycle", self.cycle_counter
+        else:
+            print "experiment is not interrupted"
 
     def run_morbidostat(self):
         '''
         loop over cycles, call the 
         '''
-        for ci in xrange(self.n_cycles):
+        initial_cycle_count = self.cycle_counter
+        for ci in xrange(initial_cycle_count, self.n_cycles):
             if debug:
                 print "#####################\n# Cycle",ci,"\n##################"
             tmp_cycle_start = time.time()
@@ -154,7 +185,7 @@ class morbidostat:
             else:
                 print("run_morbidostat: remaining time is negative"+str(remaining_time))
             self.cycle_counter+=1
-            if self.stopped:
+            if self.stopped or self.interrupted:
                 break
 
 
@@ -222,7 +253,10 @@ class morbidostat:
                 if debug:
                     print "growth vial",vial, tmp_regress[0], tmp_regress[1]
                 if tmp_regress[2]<0.5:
-                    print("morbidostat_experiment: bad fit, regression "+str(tmp_regress))
+                    print "morbidostat_experiment: bad fit, regression:"
+                    for q,x in zip(['slope', 'intercept', 'r-val','p-val'], np.round(tmp_regress[:4],4)): 
+                        print q,'\t',x
+                    print
         else:
             print("morbidostat_experiment: no data")
             
@@ -241,38 +275,54 @@ class morbidostat:
                 tmp_decision = do_nothing
                 vol_mod=1
             else:
-                if (self.target_growth_rate-self.growth_rate_estimate[vi])*self.OD_dt + (self.target_OD-self.final_OD_estimate[vi])/3>0:
+                if (self.target_growth_rate-self.growth_rate_estimate[vi])*self.OD_dt \
+                        + (self.target_OD-self.final_OD_estimate[vi])/3>0:
                     if self.vial_drug_concentration[self.cycle_counter,vi]<self.drugA_concentration:
-                        tmp_decision, vol_mod = dilute_w_medium, max(0,min(2,1-(self.target_OD-self.final_OD_estimate[vi])/self.target_OD))
+                        tmp_decision, vol_mod = dilute_w_medium, max(0,
+                              min(2,1-(self.target_OD-self.final_OD_estimate[vi])/self.target_OD))
                     else:
-                        tmp_decision, vol_mod = dilute_w_drugA,max(0, min(2,1-(self.target_OD-self.final_OD_estimate[vi])/self.target_OD))
+                        tmp_decision, vol_mod = dilute_w_drugA,max(0, 
+                              min(2,1-(self.target_OD-self.final_OD_estimate[vi])/self.target_OD))
                 else:
                     if self.vial_drug_concentration[self.cycle_counter, vi]<0.5*self.drugA_concentration:
-                        tmp_decision, vol_mod = dilute_w_drugA, max(0,min(2,1+(self.target_OD-self.final_OD_estimate[vi])/self.target_OD))
+                        tmp_decision, vol_mod = dilute_w_drugA, max(0,
+                              min(2, 1+(self.target_OD-self.final_OD_estimate[vi])/self.target_OD))
                     else:
-                        tmp_decision, vol_mod = dilute_w_drugB, max(0,min(2,1+(self.target_OD-self.final_OD_estimate[vi])/self.target_OD))
+                        tmp_decision, vol_mod = dilute_w_drugB, max(0,
+                              min(2,1+(self.target_OD-self.final_OD_estimate[vi])/self.target_OD))
 
             
             if tmp_decision[1]>0:
                 self.morb.inject_volume(tmp_decision[0], vial, self.dilution_volume)
-                self.vial_drug_concentration[self.cycle_counter+1,vi]=self.vial_drug_concentration[self.cycle_counter,vi]*self.dilution_factor
+                self.vial_drug_concentration[self.cycle_counter+1,vi] = \
+                    self.vial_drug_concentration[self.cycle_counter,vi]*self.dilution_factor
                 if tmp_decision==dilute_w_drugA:
-                    self.vial_drug_concentration[self.cycle_counter+1,vi]+=self.drugA_concentration*(1-self.dilution_factor)
+                    self.vial_drug_concentration[self.cycle_counter+1,vi]+= \
+                        self.drugA_concentration*(1-self.dilution_factor)
                 elif tmp_decision==dilute_w_drugB:
-                    self.vial_drug_concentration[self.cycle_counter+1,vi]+=self.drugB_concentration*(1-self.dilution_factor)
+                    self.vial_drug_concentration[self.cycle_counter+1,vi]+=\
+                        self.drugB_concentration*(1-self.dilution_factor)
 
                 self.decisions[self.cycle_counter,vial] = tmp_decision[1]
 
+        print 'Cycle:',self.cycle_counter, np.round(time.time()-self.experiment_start)
+        print 'Growth rate:\t',
+        for x in self.growth_rate_estimate: print '\t',np.round(x/self.target_growth_rate,2),
+        print '\nOD:\t\t',
+        for x in self.final_OD_estimate: print '\t',np.round(x/self.target_OD,2),
+        print '\nDecision:\t',
+        for x in self.decisions[self.cycle_counter,:-1]: print '\t',x,
+        print '\n'
 
-    def plot_OD(self):
-        self.init_data_plot()
-        while (self.plot_OD):
-            self.update_plot()
-            time.sleep(self.OD_dt*self.second)
 
 
     def init_data_plot(self):
-        n_cols = 3
+        '''
+        this function sets up the plot of the OD and the antibiotic concentration
+        in each of the 
+        '''
+        # there is a subplot for each vial which share axis. hence they are stacked
+        n_cols = 3 # supplots are arranged in rows of 3
         n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
         plt.subplots_adjust(hspace = .001,wspace = .001)
         
@@ -282,24 +332,38 @@ class morbidostat:
         for vi, vial  in enumerate(self.vials):
             self.subplots[vi] = [plt.subplot(n_rows, n_cols, vi+1)]
             self.subplots[vi].append(self.subplots[vi][0].twinx())
-            self.plotted_line_objects[vi] = [self.subplots[vi][0].plot([],[], c='b')[0], self.subplots[vi][1].plot([],[], c='r')[0]]
+            self.plotted_line_objects[vi] = [self.subplots[vi][0].plot([],[], c='b')[0], 
+                                             self.subplots[vi][1].plot([],[], c='r')[0]]
+            #self.subplots[vi][0].plot([0,self.experiment_duration], [self.target_OD, self.target_OD], ls='--', c='k')
 
+            # set up the axis such that the only the left most axis shows OD and ticks
+            # and only the rightmost axis shows the antibiotic and ticks
             if vi%n_cols:
                 self.subplots[vi][0].set_yticklabels([])
+            else:
+                self.subplots[vi][0].set_ylabel('OD')
             if vi%n_cols<n_cols-1:
                 self.subplots[vi][1].set_yticklabels([])
+            else:
+                self.subplots[vi][1].set_ylabel('antibiotic')
+
+            # switch off x tick labels in all but the bottom axis
             if int(np.ceil(1.0*self.n_vials/n_cols))<n_rows:
                 self.subplots[vi][0].set_xticklabels([])
-
-        plt.show()
+            else:
+                self.subplots[vi][0].set_xlabel('time')
 
 
     def update_plot(self, dummy):
+        '''
+        this function is called repeatedly and redraws the plot after adding new data
+        the axis are rescaled but kept identical in each subplot
+        '''
         n_cycles_to_show = 5
         display_unit = 60
         first_plot_cycle = max(0,self.cycle_counter-n_cycles_to_show)
         last_plot_cycle = first_plot_cycle+n_cycles_to_show
-
+        #print "updating plot"
         max_OD = 0
         max_AB = 0
         for vi, vial  in enumerate(self.vials):
@@ -320,4 +384,5 @@ class morbidostat:
             self.subplots[vi][0].set_ylim([0,max_OD*1.2+0.01])
             self.subplots[vi][0].set_xlim([np.min(x_data), np.max(x_data)+self.OD_dt/display_unit])
             self.subplots[vi][1].set_ylim([0,max_AB*1.2+0.01])
-        plt.draw()
+        #plt.draw()
+
