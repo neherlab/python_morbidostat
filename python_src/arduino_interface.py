@@ -3,13 +3,15 @@ import threading
 import math
 import serial
 
+lok=threading.Lock()
+
 debug = False
 baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
 light_switch = 53 
 # dictionary mapping pumps to pins
-pumps = {'medium': range(7,7+15), 
-         'drug A': range(22,22+15),
+pumps = {'medium': range(7,13)+range(14,23), 
+         'drug A': range(23,23+15),
          'drug B': range(38,38+15)}
 
 
@@ -20,6 +22,13 @@ class morbidostat:
         self.pump_off_threads = {}
         self.light_state = False
         self.mixing_time = 5 # mixing time in seconds
+
+    def atomic_serial_write(self,msg):
+        with lok:
+            self.ser.write(msg)
+    def atomic_serial_readline(self):
+        with lok:
+            return self.ser.readline()
 
     def connect(self):
         '''
@@ -117,7 +126,7 @@ class morbidostat:
                 +'{number:0{width}d}'.format(number=n_measurements, width=4) \
                 +'{number:0{width}d}'.format(number=dt, width=4) +'\n'
 
-            bytes_written = self.ser.write(command_str)
+            bytes_written = self.atomic_serial_write(command_str)
             if debug:
                 print(str(time.time())+" out: "+command_str[:-1] + ' bytes_written: '+str(bytes_written)) 
 
@@ -126,7 +135,7 @@ class morbidostat:
             time.sleep(time_delay)
             if debug:
                 print self.ser.inWaiting()
-            measurement = self.ser.readline()
+            measurement = self.atomic_serial_readline()
             if debug:
                 print(str(time.time())+" in: "+measurement) 
 
@@ -187,13 +196,13 @@ class morbidostat:
             command_str = 'D'+'{number:0{width}d}'.format(number=pin_number, width=2) + '1\n'
         else:
             command_str = 'D'+'{number:0{width}d}'.format(number=pin_number, width=2) + '0\n'
-        bytes_written = self.ser.write(command_str)
+        bytes_written = self.atomic_serial_write(command_str)
 
         if debug:
             print(str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)) 
 
         # wait for reply and verify
-        response = self.ser.readline()
+        response = self.atomic_serial_readline()
         if debug:
             print(str(time.time())+" in: "+response) 
 
