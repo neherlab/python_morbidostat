@@ -8,10 +8,10 @@ morb = M.morbidostat()
 # pumps and switch them on for a few seconds
 if morb.morbidostat_OK:
     m,v,c = morb.measure_voltage(1, 10, 10)
-    for pump_type in ['medium', 'drug A', 'drug B']:        
+    for pump_type in ['medium','drug A', 'drug B']:        
         for pin in range(15):
-            morb.run_pump(pump_type, pin, 5)
-            time.sleep(6)
+            morb.run_pump(pump_type, pin, 3)
+            time.sleep(4)
 
 else:
     print("Initializing morbidostat failed")

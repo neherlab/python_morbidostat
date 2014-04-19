@@ -10,9 +10,9 @@ baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
 light_switch = 53 
 # dictionary mapping pumps to pins
-pumps = {'medium': range(7,13)+range(14,23), 
-         'drug A': range(23,23+15),
-         'drug B': range(38,38+15)}
+pumps = {'drug A': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
+         'drug B': [30,31, 32, 33,34,35, 23, 36,37, 24,25, 26,27,28,29], 
+         'medium': [53,52,51,50,49,48, 45 , 47,46, 44,43,42,41,40,39]}
 
 
 class morbidostat:
