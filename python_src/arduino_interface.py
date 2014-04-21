@@ -9,6 +9,7 @@ debug = False
 baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
 light_switch = 53 
+suction_pump = 3
 # dictionary mapping pumps to pins
 pumps = {'drug A': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
          'drug B': [30,31, 32, 33,34,35, 23, 36,37, 24,25, 26,27,28,29], 
@@ -48,7 +49,7 @@ class morbidostat:
                     self.morbidostat_OK = True
                     try_next=False
             except:
-                if i<10:
+                if port_number<10:
                     print("Serial /dev/ttyACM"+str(port_number)+" not available, trying next")
                     try_next=True
                 else:
@@ -156,7 +157,6 @@ class morbidostat:
         '''
         run a specific pump to inject a given volume
         params:
-        ser: open serial port to communicate with the arduino
         pump_type: one of "medium", "drug A" and "drug B"
         pump_number: number of the pump to be switched on (0-15)
         volume: volume to be added in ml
@@ -166,12 +166,22 @@ class morbidostat:
             # run the pump for calculated time
             self.run_pump(pump_type, pump_number, run_time)
 
+    def remove_waste(self, volume=0.1):
+        '''
+        run the waste pump to remove the specified volume of waste
+        params:
+        volume: volume to be removed in ml
+        '''
+        run_time = self.volume_to_time(volume, 'waste pump', 0)
+        if run_time>0:
+            # run the pump for calculated time
+            self.run_waste_pump(run_time)
+
 
     def run_pump(self,pump_type='medium', pump_number=0, run_time=0.1):
         '''
         run a specific pump for a given amount of time
         params:
-        ser: open serial port to communicate with the arduino
         pump_type: one of "medium", "drug A" and "drug B"
         pump_number: number of the pump to be switched on (0-15)
         time: time to run the pump in seconds
@@ -187,6 +197,25 @@ class morbidostat:
                 self.pump_off_threads[(pump_type,pump_number)].start()
         else:
             print("Serial port is not open")
+
+    def run_waste_pump(self, run_time=0.1):
+        '''
+        run the waste pump for a given amount of time
+        params:
+        time: time to run the pump in seconds
+        '''
+        if self.ser.isOpen():
+            digital_pin = suction_pump
+            if run_time>0:
+                # switch pump on
+                self.switch_pin(digital_pin, True)
+                # generate a time object to switch the pump off after 
+                # the time interval necessary to pump the required volume
+                self.pump_off_threads[('waste pump',0)] = threading.Timer(run_time, self.switch_pin, args=(digital_pin, False))
+                self.pump_off_threads[('waste pump',0)].start()
+        else:
+            print("Serial port is not open")
+
 
     def switch_pin(self, pin_number, state):
         '''
