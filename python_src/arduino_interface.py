@@ -8,7 +8,7 @@ lok=threading.Lock()
 debug = False
 baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
-light_switch = 53 
+light_switch = 22 
 suction_pump = 3
 # dictionary mapping pumps to pins
 pumps = {'drug A': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
@@ -52,6 +52,7 @@ class morbidostat:
                 if port_number<10:
                     print("Serial /dev/ttyACM"+str(port_number)+" not available, trying next")
                     try_next=True
+                    port_number+=1
                 else:
                     print("Opening serial port failed")
                     try_next=False
@@ -249,5 +250,8 @@ class morbidostat:
         '''
         switch the light pin to the specified state
         '''
+        #arduino high corresponds to open relais
+        tmp_state = 1-state
         if self.light_state!=state:
-            self.switch_pin(light_switch, state)
+            self.switch_pin(light_switch, tmp_state)
+            self.light_state = state
