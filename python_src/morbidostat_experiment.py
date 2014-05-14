@@ -1,5 +1,5 @@
 from __future__ import division
-import morbidostat_simulator as morb
+import arduino_interface as morb
 import numpy as np
 import time,copy,threading
 import matplotlib.pyplot as plt
@@ -11,8 +11,46 @@ debug = False
 
 do_nothing = ('as is',1)
 dilute_w_medium = ('medium',2)
-dilute_w_drugA = ('drug A', 3)
-dilute_w_drugB = ('drug B', 4)
+dilute_w_drugA = ('drugA', 3)
+dilute_w_drugB = ('drugB', 4)
+
+def calibrate_pumps(pump_type, vials = None, dt = 10):
+    if vials is None:
+        vials = range(15)
+    calibration_morb = morb.morbidostat()
+    print("Upon pressing enter, each pump will be run for "+str(dt)+" seconds.")
+    print("Before each pump, you will be prompted for the weight of the current set-up.")
+    s = raw_input("press enter to start, q to stop: ")
+    if len(s)>0:
+        print("Aborting calibration")
+        return
+
+    # loop over vials, prompt for weight
+    weight  = np.zeros(len(vials)+1)   
+    for vi,vial in enumerate(vials):
+        s = raw_input('current weight: ')
+        no_weight = True
+        while no_weight:
+            try:
+                weight[vi] =float(s)
+                no_weight = False
+            except:
+                print("invalid weight")
+        calibration_morb.run_pump(pump_type, vial,run_time=dt)
+
+    # get final weight
+    s = raw_input('final weight: ')
+    no_weight = True
+    while no_weight:
+        try:
+            weight[-1] =float(s)
+            no_weight = False
+        except:
+            print("invalid weight")
+
+    # calculate pump_rate and save to file
+    pump_rate = np.diff(weight)/dt
+    np.savetxt(morb.pump_calibration_file_base+'_'+pump_type+'.dat', pump_rate)
 
 class morbidostat:
     '''
@@ -167,6 +205,13 @@ class morbidostat:
         else:
             print "experiment is not interrupted"
 
+    def run_all_pumps(self,pump_type, run_time):
+        '''
+        run all pumps of a specified type, for example for cleaning purposes
+        '''
+        for vi,vial in enumerate(self.vials):
+            self.morb.run_pump(pump_type=pump_type, pump_number = vial, run_time = run_time)
+
     def run_morbidostat(self):
         '''
         loop over cycles, call the 
@@ -225,11 +270,13 @@ class morbidostat:
         t = (time.time()-self.experiment_start)/self.second
         if debug:
             print "OD",
-        for vi,vial in enumerate(self.vials):
-            self.last_OD_measurements[self.OD_measurement_counter, vi] = self.morb.measure_OD(vial, self.n_reps, self.rep_dt, False)
-            if debug:
-                 print np.round(self.last_OD_measurements[self.OD_measurement_counter, vi],4),
+        for rep in xrange(self.n_reps):
+            for vi,vial in enumerate(self.vials):
+                self.last_OD_measurements[self.OD_measurement_counter, vi] = self.morb.measure_OD(vial, 1, self.rep_dt, False)
+                if debug:
+                     print np.round(self.last_OD_measurements[self.OD_measurement_counter, vi],4),
             
+        self.last_OD_measurements[self.OD_measurement_counter, :] /= self.nreps
         if debug:
             print 
         self.last_OD_measurements[self.OD_measurement_counter,-1]=t

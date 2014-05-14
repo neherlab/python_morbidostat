@@ -7,8 +7,8 @@ import numpy as np
 debug = False
 # dictionary mapping pumps to pins
 pumps = {'medium': range(7,7+15), 
-         'drug A': range(22,22+15),
-         'drug B': range(38,38+15)}
+         'drugA': range(22,22+15),
+         'drugB': range(38,38+15)}
 
 
 class morbidostat:
@@ -94,11 +94,11 @@ class morbidostat:
         if pump_type=='medium':
             self.antibiotic[pump_number]*=(1 - volume/self.volume)
             self.OD[pump_number]*=(1 - volume/self.volume)
-        elif pump_type=='drug A':
+        elif pump_type=='drugA':
             self.antibiotic[pump_number]*=(1 - volume/self.volume)
             self.antibiotic[pump_number]+=self.concA*volume/self.volume
             self.OD[pump_number]*=(1 - volume/self.volume)
-        elif pump_type=='drug B':
+        elif pump_type=='drugB':
             self.antibiotic[pump_number]*=(1 - volume/self.volume)
             self.antibiotic[pump_number]+=self.concB*volume/self.volume
             self.OD[pump_number]*=(1 - volume/self.volume)
