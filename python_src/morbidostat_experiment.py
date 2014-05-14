@@ -176,8 +176,10 @@ class morbidostat:
             self.running=False
 
         if self.display_OD:
-            self.data_figure
-        
+            try:
+                self.data_figure.close()
+            except:
+                pass
         print "experiment has finished. disconnecting the morbidostat"
         self.morb.disconnect()
         
