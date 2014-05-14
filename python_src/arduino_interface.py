@@ -21,11 +21,11 @@ pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
 # load calibration parameters
 ############
 pump_calibration_file_base = 'pump_calibration'
-OD_calibration_file_base = 'OD_calibration'
+OD_calibration_file_name = 'OD_calibration'
 
 for pump_type in pumps:
     fname = pump_calibration_file_base+'_'+pump_type+'.dat'
-    if os.path.isfile():
+    if os.path.isfile(fname):
         try:
             pump_calibration_params = np.loadtxt(fname)
         except:

@@ -28,9 +28,9 @@ def calibrate_pumps(pump_type, vials = None, dt = 10):
     # loop over vials, prompt for weight
     weight  = np.zeros(len(vials)+1)   
     for vi,vial in enumerate(vials):
-        s = raw_input('current weight: ')
         no_weight = True
         while no_weight:
+            s = raw_input('current weight: ')
             try:
                 weight[vi] =float(s)
                 no_weight = False
@@ -39,9 +39,9 @@ def calibrate_pumps(pump_type, vials = None, dt = 10):
         calibration_morb.run_pump(pump_type, vial,run_time=dt)
 
     # get final weight
-    s = raw_input('final weight: ')
     no_weight = True
     while no_weight:
+        s = raw_input('final weight: ')
         try:
             weight[-1] =float(s)
             no_weight = False
@@ -132,6 +132,7 @@ class morbidostat:
         self.display_OD = True
         self.stopped=False
         self.interrupted =False
+        self.running = False
         # data acqusition specifics
         self.n_reps=1
         self.rep_dt = 0.001
@@ -162,15 +163,17 @@ class morbidostat:
             #self.plot_thread.start()
         self.experiment_start = time.time()
         self.cycle_thread.start()
-        
+        self.running = True
+
     def stop_experiment(self):
         '''
         set the stop signal and wait for threads to finish
         '''
         self.stopped = True
-        if self.cycle_counter<self.n_cycles:
+        if self.cycle_counter<self.n_cycles and self.running:
             print "Stopping the cycle thread, waiting for cycle to finish"
             self.cycle_thread.join()
+            self.running=False
 
         if self.display_OD:
             self.data_figure
@@ -185,7 +188,7 @@ class morbidostat:
         but before the dilutions (but this is not essential)
         '''
         self.interrupted = True
-        if self.cycle_counter<self.n_cycles:
+        if self.cycle_counter<self.n_cycles and self.running:
             print "Stopping the cycle thread, waiting for cycle to finish"
             self.cycle_thread.join()
         print "recording stopped, safe to disconnect"
@@ -200,6 +203,7 @@ class morbidostat:
         if self.interrupted:
             self.cycle_thread = threading.Thread(target = self.run_morbidostat)
             self.interrupted=False
+            self.running = True
             self.cycle_thread.start()
             print "morbidostat restarted in cycle", self.cycle_counter
         else:
