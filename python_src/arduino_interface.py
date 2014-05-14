@@ -1,7 +1,8 @@
 import time
 import threading
 import math
-import serial
+import serial,os
+import numpy as np
 
 lok=threading.Lock()
 
@@ -11,11 +12,42 @@ baudrate = 9600
 light_switch = 53 
 suction_pump = 3
 # dictionary mapping pumps to pins
-pumps = {'drug A': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
-         'drug B': [30,31, 32, 33,34,35, 23, 36,37, 24,25, 26,27,28,29], 
+pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
+         'drugB': [30,31, 32, 33,34,35, 23, 36,37, 24,25, 26,27,28,29], 
          'medium': [53,52,51,50,49,48, 45 , 47,46, 44,43,42,41,40,39]}
 
 
+############
+# load calibration parameters
+############
+pump_calibration_file_base = 'pump_calibration'
+OD_calibration_file_base = 'OD_calibration'
+
+for pump_type in pumps:
+    fname = pump_calibration_file_base+'_'+pump_type+'.dat'
+    if os.path.isfile():
+        try:
+            pump_calibration_params = np.loadtxt(fname)
+        except:
+            print "error opening pump calibration, all pump calibration parameters set to 0"
+            pump_calibration_params = np.zeros(15)
+    else:
+        print "no pump calibration file "+fname+", all pump calibration parameters set to 0"
+        pump_calibration_params = np.zeros(15)
+
+if os.path.isfile(OD_calibration_file_name):
+    try:
+        voltage_to_OD_params = np.loadtxt(OD_calibration_file_name)
+    except:
+        print "error opening OD calibration file, all OD parameters set to zero"
+        voltage_to_OD_params = np.zeros((15,2))
+else:
+    print "no OD calibration file, all OD parameters set to zero"
+    voltage_to_OD_params = np.zeros((15,2))
+
+#############
+# define morbidostat class that defines command to work with the device
+#############
 class morbidostat:
 
     def __init__(self):
@@ -157,7 +189,7 @@ class morbidostat:
         '''
         run a specific pump to inject a given volume
         params:
-        pump_type: one of "medium", "drug A" and "drug B"
+        pump_type: one of "medium", "drugA" and "drugB"
         pump_number: number of the pump to be switched on (0-15)
         volume: volume to be added in ml
         '''
@@ -182,7 +214,7 @@ class morbidostat:
         '''
         run a specific pump for a given amount of time
         params:
-        pump_type: one of "medium", "drug A" and "drug B"
+        pump_type: one of "medium", "drugA" and "drugB"
         pump_number: number of the pump to be switched on (0-15)
         time: time to run the pump in seconds
         '''
