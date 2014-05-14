@@ -141,6 +141,8 @@ class morbidostat:
             if debug:
                 print(str(time.time())+" in: "+measurement) 
 
+            if switch_light_off:  
+                self.switch_light(False) # switch IR LEDs off
             # parse the input
             entries = measurement.split()
 
@@ -150,7 +152,6 @@ class morbidostat:
                 print(measurement)
                 print("measure_voltage: received unexpected reply")
                 return None, None, command_str
-            if switch_light_off:  self.switch_light(False) # switch IR LEDs off
         else:
             print("Serial port is not open")
 
@@ -251,7 +252,7 @@ class morbidostat:
         switch the light pin to the specified state
         '''
         #arduino high corresponds to open relais
-        tmp_state = 1-state
+        tmp_state = (1-state)==1
         if self.light_state!=state:
             self.switch_pin(light_switch, tmp_state)
             self.light_state = state
