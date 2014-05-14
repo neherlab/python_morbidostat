@@ -10,6 +10,7 @@ debug = False
 baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
 light_switch = 22 
+thermometer_pin = 15
 suction_pump = 3
 # dictionary mapping pumps to pins
 pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
@@ -140,12 +141,24 @@ class morbidostat:
         n_measurments: number of repeated measurements to be taken (<10000)
         dt: time lag between measurements (<10000 ms)
         '''
-        mean_val, std_val, cstr= self.measure_voltage( vial, n_measurements, dt, switch_light_off)
+        analog_pin = self.vial_to_pin(vial)
+        mean_val, std_val, cstr= self.measure_voltage( analog_pin, n_measurements, dt, switch_light_off)
         return self.voltage_to_OD(mean_val, std_val)
 
-    def measure_voltage(self, vial, n_measurements=1, dt=10, switch_light_off=True):
+    def measure_temperature(self, n_measurements=1, dt=10, switch_light_off =True):
         '''
-        measure the voltage at the specified vial n_measurement times with a time lag
+        measure the temperature 
+        params:
+        n_measurments: number of repeated measurements to be taken (<10000)
+        dt: time lag between measurements (<10000 ms)
+        '''
+        mean_val, std_val, cstr= self.measure_voltage( thermometer_pin, n_measurements, dt, switch_light_off)
+        return mean_val/1024*5.0*100
+
+
+    def measure_voltage(self, analog_pin, n_measurements=1, dt=10, switch_light_off=True):
+        '''
+        measure the voltage at specified pin n_measurement times with a time lag
         of dt milli seconds between measurements. 
         params:
         ser: open serial port to communicate with the arduino
@@ -155,7 +168,6 @@ class morbidostat:
         '''
         if self.ser.isOpen():
             self.switch_light(True) # switch IR LEDs on
-            analog_pin = self.vial_to_pin(vial)
             command_str = 'A'+'{number:0{width}d}'.format(number=analog_pin, width=2) \
                 +'{number:0{width}d}'.format(number=n_measurements, width=4) \
                 +'{number:0{width}d}'.format(number=dt, width=4) +'\n'
