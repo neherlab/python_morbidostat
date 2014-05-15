@@ -52,7 +52,7 @@ def calibrate_pumps(pump_type, vials = None, dt = 10):
     pump_rate = np.diff(weight)/dt
     np.savetxt(morb.pump_calibration_file_base+'_'+pump_type+'.dat', pump_rate)
 
-class morbidostat:
+class morbidostat(object):
     '''
     Running a morbidostat experiment. 
     This class communicates with the morbidostat device through a separate
@@ -95,6 +95,7 @@ class morbidostat:
         self.dilution_threshold = 0.03
         self.target_growth_rate = -np.log(self.dilution_factor)/self.cycle_dt
         self.drug = drug
+        self.experiment_name = ''
         self.bug = bug
         self.drugA_concentration = drugA_concentration
         self.drugB_concentration = drugB_concentration

@@ -106,7 +106,7 @@ class morbidostat:
         '''
         close the serial port
         '''
-        if self.ser.isOpen():
+        if self.morbidostat_OK and self.ser.isOpen():
             # wait for all threads to finish
             while any([t.is_alive() for k,t in self.pump_off_threads.iteritems()]):
                 print("\n Before disconnecting waiting for ")
