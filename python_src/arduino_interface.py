@@ -306,17 +306,19 @@ class morbidostat:
         '''
         switch the specified pin to the specified state
         '''
-        command_str = 'T\n'
-        bytes_written = self.atomic_serial_write(command_str)
+        #for some reason the first measurement is old
+        for rep in range(2):
+            command_str = 'T\n'
+            bytes_written = self.atomic_serial_write(command_str)
 
-        if debug:
-            print(str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)) 
+            if debug:
+                print(str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)) 
 
-        # wait for reply and verify
-        response = self.atomic_serial_readline()
-        if debug:
-            print(str(time.time())+" in: "+response) 
-
+            # wait for reply and verify
+            response = self.atomic_serial_readline()
+            if debug:
+                print(str(time.time())+" in: "+response) 
+            if rep: time.sleep(2.0)
         # parse the response and verify that the pump was set to the correct state
         entries = response.split()
         temp1, temp2 = float(entries[1]), float(entries[2])
