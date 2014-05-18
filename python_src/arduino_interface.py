@@ -300,3 +300,24 @@ class morbidostat:
         if self.light_state!=state:
             self.switch_pin(light_switch, tmp_state)
             self.light_state = state
+
+
+    def measure_temperature(self):
+        '''
+        switch the specified pin to the specified state
+        '''
+        command_str = 'T\n'
+        bytes_written = self.atomic_serial_write(command_str)
+
+        if debug:
+            print(str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)) 
+
+        # wait for reply and verify
+        response = self.atomic_serial_readline()
+        if debug:
+            print(str(time.time())+" in: "+response) 
+
+        # parse the response and verify that the pump was set to the correct state
+        entries = response.split()
+        temp1, temp2 = float(entries[1]), float(entries[2])
+        return temp1, temp2
