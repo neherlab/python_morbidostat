@@ -105,6 +105,7 @@ class morbidostat(object):
         self.n_cycles = self.experiment_duration//self.cycle_dt
 
         self.OD = np.zeros((self.n_cycles, self.ODs_per_cycle, self.n_vials+1), dtype = float)
+        self.temperatures = np.zeros((self.n_cycles, 3))
         self.decisions = np.zeros((self.n_cycles, self.n_vials+1), dtype = int)
         self.vial_drug_concentration = np.zeros((self.n_cycles+1, self.n_vials+1), dtype = float)
         self.historical_drug_A_concentration = []
@@ -242,6 +243,8 @@ class morbidostat(object):
 
 
     def morbidostat_cycle(self):
+        t = (time.time()-self.experiment_start)/self.second
+        self.morb.measure_temperature()
         self.OD_measurement_counter=0
         self.OD_thread = threading.Thread(target = self.measure_OD_for_cycle)
         # start thread and wait for it to finish
@@ -253,6 +256,10 @@ class morbidostat(object):
         self.estimate_growth_rates()
         self.feedback_on_OD()
         self.morb.wait_until_mixed()
+        
+        self.temperatures[self.cycle_counter,0] = t
+        self.temperatures[self.cycle_counter,1:] = self.morb.temperatures
+
 
     def measure_OD_for_cycle(self):
         for oi in xrange(self.ODs_per_cycle):

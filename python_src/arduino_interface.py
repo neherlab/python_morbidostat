@@ -54,6 +54,7 @@ class morbidostat:
     def __init__(self):
         self.connect()
         self.pump_off_threads = {}
+        self.temperature_thread = None
         self.light_state = False
         self.mixing_time = 5 # mixing time in seconds
 
@@ -144,16 +145,6 @@ class morbidostat:
         analog_pin = self.vial_to_pin(vial)
         mean_val, std_val, cstr= self.measure_voltage( analog_pin, n_measurements, dt, switch_light_off)
         return self.voltage_to_OD(mean_val, std_val)
-
-    def measure_temperature(self, n_measurements=1, dt=10, switch_light_off =True):
-        '''
-        measure the temperature 
-        params:
-        n_measurments: number of repeated measurements to be taken (<10000)
-        dt: time lag between measurements (<10000 ms)
-        '''
-        mean_val, std_val, cstr= self.measure_voltage( thermometer_pin, n_measurements, dt, switch_light_off)
-        return mean_val/1024*5.0*100
 
 
     def measure_voltage(self, analog_pin, n_measurements=1, dt=10, switch_light_off=True):
@@ -302,24 +293,35 @@ class morbidostat:
             self.light_state = state
 
 
-    def measure_temperature(self):
+    def measure_temperature(self, switch_light_off=True):
         '''
         switch the specified pin to the specified state
         '''
+        self.switch_light(True)
+        command_str = 'C\n'
+        temperature_conversion_delay = 1.0
+        bytes_written = self.atomic_serial_write(command_str)
+        self.temperature_thread = threading.Timer(temperature_conversion_delay, 
+                                                  self.read_temperature, 
+                                                  args=(switch_light_off,))
+        self.temperature_thread.start()
+
+    def read_temperature(self, switch_light_off):
         #for some reason the first measurement is old
-        for rep in range(2):
-            command_str = 'T\n'
-            bytes_written = self.atomic_serial_write(command_str)
+        command_str = 'T\n'
+        bytes_written = self.atomic_serial_write(command_str)
+        if debug:
+            print(str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)) 
 
-            if debug:
-                print(str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)) 
+        # wait for reply and verify
+        response = self.atomic_serial_readline()
+        if debug:
+            print(str(time.time())+" in: "+response) 
 
-            # wait for reply and verify
-            response = self.atomic_serial_readline()
-            if debug:
-                print(str(time.time())+" in: "+response) 
-            if rep: time.sleep(2.0)
-        # parse the response and verify that the pump was set to the correct state
         entries = response.split()
         temp1, temp2 = float(entries[1]), float(entries[2])
-        return temp1, temp2
+        self.temperatures = (temp1, temp2)
+        if debug:
+            print "temperatures:",self.temperatures
+        if switch_light_off:
+            self.switch_light(False)
