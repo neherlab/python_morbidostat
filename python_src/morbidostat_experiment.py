@@ -1,6 +1,7 @@
 from __future__ import division
 import arduino_interface as morb
 import numpy as np
+from scipy.stats import linregress
 import time,copy,threading
 import matplotlib.pyplot as plt
 from matplotlib import animation
@@ -14,7 +15,53 @@ dilute_w_medium = ('medium',2)
 dilute_w_drugA = ('drugA', 3)
 dilute_w_drugB = ('drugB', 4)
 
+def calibrate_OD(vials = None):
+    '''
+    measure OD of OD standard, calculate regression coefficients
+    '''
+    if vials is None:
+        vials = range(15)
+    calibration_morb = morb.morbidostat()
+    no_valid_standard=True
+    ODs = []
+    voltages = []
+    while True:
+        while no_valid_standard:
+            s = raw_input("Enter OD of standard [q to quit]: ")
+            if s==q:
+                print("Aborting calibration")
+                return
+            try:
+                cur_OD = float(s)
+                no_valid_standard=False
+            except:
+                print("invalid entry")
+        
+        ODs.append(cur_OD)
+        voltages.append(np.zeros(len(vials)))
+        for vi,vial in enumerate(vials):
+            OKstr = raw_input("Place OD standard in receptible "+str(vial+1)+", press enter when done")
+            voltages[-1][vi] = calibration_morb.measure_voltage(calibration_morb.vial_to_pin(vial), 
+                                                                switch_light_off=True)
+
+    if len(ODs)>1:
+        print("Collected "+str(len(ODs))+" OD voltage pairs, calculating voltage -> OD conversion")
+        ODs = np.array(ODs)
+        voltages = np.array(voltages).T
+        fit_parameters = np.zeros((len(vials), 2))
+        for vi,vial in enumerate(vials):
+            slope, intercept, r,p,stderr = linregress(ODs, voltages[vi,:])
+            fit_parameters[vi,:] = [1.0/slope,  -intercept/slope]
+        np.savetxt(morb.OD_calibration_file_name, fit_parameters)
+    else:
+        print("need measurements for at least two OD standards") 
+
 def calibrate_pumps(pump_type, vials = None, dt = 10):
+    '''
+    Routine that runs all pumps sequentially assuming the outlet is sitting on 
+    on a balance. after running a pump for dt seconds, the user is prompted for the weight
+    until all 15 pumps have been run
+    '''
     if vials is None:
         vials = range(15)
     calibration_morb = morb.morbidostat()
