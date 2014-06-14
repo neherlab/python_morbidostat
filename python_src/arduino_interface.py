@@ -325,3 +325,61 @@ class morbidostat:
             print "temperatures:",self.temperatures
         if switch_light_off:
             self.switch_light(False)
+
+
+#################################################################
+# END interface class
+#################################################################
+
+def measure_self_heating(morb, vials = range(15), total_time = 180, dt = 1):
+    '''
+    expects and morbidostat as argument, measures voltage every
+    dt seconds for a total of total_time seconds
+    '''
+    voltage = np.zeros((total_time//dt, len(vials)+1))
+    t_start = time.time()
+    for ti, t in enumerate(np.arange(0,total_time, dt)):
+        time.sleep(max(0,t-(time.time()-t_start)))
+        measurements = []
+        print t, time.time()
+        for vi,vial in enumerate(vials):
+            measurements.append(morb.measure_voltage(vial, n_measurements=1,
+                                                     dt=0,switch_light_off=False)[0])
+        if ti<voltage.shape[0]:
+            voltage[ti,0]=t
+            voltage[ti,1:] = measurements
+    morb.switch_light(False)
+    return voltage
+
+def measure_recovery(morb, vials = range(15), total_time = 180, dt = 5):
+    '''
+    expects and morbidostat as argument, measures voltage every
+    dt seconds for a total of total_time seconds
+    '''
+    voltage = np.zeros((total_time//dt, len(vials)+1))
+    t_start = time.time()
+    for ti, t in enumerate(np.arange(0,total_time, dt)):
+        time.sleep(max(0,t-(time.time()-t_start)))
+        measurements = []
+        print t, time.time()
+        for vi,vial in enumerate(vials):
+            measurements.append(morb.measure_voltage(vial,dt=0, switch_light_off=False)[0])
+        morb.switch_light(False)        
+        if ti<voltage.shape[0]:
+            voltage[ti,0]=t
+            voltage[ti,1:] = measurements
+    return voltage
+
+def take_temperature_profile(morb, total_time = 600, dt=10):
+    temperatures = np.zeros((total_time//dt, 3))
+    t_start = time.time()
+    for ti, t in enumerate(np.arange(0,total_time, dt)):
+        morb.measure_temperature()
+        time.sleep(2)
+        time.sleep(max(0,t-(time.time()-t_start)))
+        print t, morb.temperatures
+        if ti<temperatures.shape[0]:
+            temperatures[ti,0]=t
+            temperatures[ti,1:] = morb.temperatures
+    return temperatures
+    
