@@ -22,7 +22,7 @@ pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
 # load calibration parameters
 ############
 pump_calibration_file_base = 'pump_calibration'
-OD_calibration_file_name = 'OD_calibration'
+OD_calibration_file_name = 'OD_calibration.dat'
 
 for pump_type in pumps:
     fname = pump_calibration_file_base+'_'+pump_type+'.dat'
@@ -129,8 +129,9 @@ class morbidostat:
         assert vial<15, "maximal vial number is 15, got "+str(vial)
         return vial
 
-    def voltage_to_OD(self,mean_val, std_val):
-        return mean_val, std_val
+    def voltage_to_OD(self,vi, mean_val, std_val):
+        return voltage_to_OD_params[vi,0]*mean_val-voltage_to_OD_params[vi,1], \
+            voltage_to_OD_params[vi,0]*std_val
 
     def measure_OD(self, vial, n_measurements=1, dt=10, switch_light_off=True):
         '''
@@ -144,7 +145,7 @@ class morbidostat:
         '''
         analog_pin = self.vial_to_pin(vial)
         mean_val, std_val, cstr= self.measure_voltage( analog_pin, n_measurements, dt, switch_light_off)
-        return self.voltage_to_OD(mean_val, std_val)
+        return self.voltage_to_OD(vial, mean_val, std_val)
 
 
     def measure_voltage(self, analog_pin, n_measurements=1, dt=10, switch_light_off=True):
