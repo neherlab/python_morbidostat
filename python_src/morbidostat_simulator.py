@@ -25,13 +25,16 @@ class morbidostat:
         self.concB = 2.0
         self.volume = 10.0
         self.second = 1.0
-
+        self.temperatures = (37,37)
 
     def wait_until_mixed(self):
         ''' 
         function not needed in a simulator, included for compatibility
         '''
         return
+
+    def measure_temperature(self):
+        pass
 
     def connect(self):
         self.morbidostat_OK=True

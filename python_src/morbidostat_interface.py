@@ -1,6 +1,12 @@
 from morbidostat_experiment import *
 import Tkinter
 
+class scheduling_dialog(Tkinter.Frame):
+    pass
+
+class vial_selection_dialog(Tkinter.Frame):
+    pass
+
 class morbidostat_interface(Tkinter.Frame):
     def __init__(self, master):
         self.master = master        

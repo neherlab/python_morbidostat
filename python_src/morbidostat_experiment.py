@@ -1,8 +1,9 @@
 from __future__ import division
 import arduino_interface as morb
+import morbidostat_simulator as morb
 import numpy as np
 from scipy.stats import linregress
-import time,copy,threading
+import time,copy,threading,os
 import matplotlib.pyplot as plt
 from matplotlib import animation
 
@@ -110,7 +111,9 @@ class morbidostat(object):
     
     def __init__(self, vials = range(15), experiment_duration = 2*60*60, 
                  target_OD = 0.1, diluation_factor = 0.9, bug = '', drug ='',
-                 drugA_concentration = 0.3, drugB_concentration = 2.0):
+                 drugA_concentration = 0.3, drugB_concentration = 2.0, OD_dt = 30, cycle_dt = 600):
+        # the default experiment is a morbidostat measurement
+        self.experiment_type = 'morbidostat'
 
         # all times in seconds, define parameter second to speed up for testing
         self.second = 0.01
@@ -124,8 +127,8 @@ class morbidostat(object):
         self.morb.second = self.second
 
         # experiment parameters
-        self.OD_dt = 30
-        self.cycle_dt = 60*5
+        self.OD_dt = OD_dt
+        self.cycle_dt = cycle_dt
         self.experiment_duration = experiment_duration
 
         if (np.max(vials)<15):
@@ -153,13 +156,13 @@ class morbidostat(object):
 
         self.OD = np.zeros((self.n_cycles, self.ODs_per_cycle, self.n_vials+1), dtype = float)
         self.temperatures = np.zeros((self.n_cycles, 3))
-        self.decisions = np.zeros((self.n_cycles, self.n_vials+1), dtype = int)
+        self.decisions = np.zeros((self.n_cycles, self.n_vials+1), dtype = float)
         self.vial_drug_concentration = np.zeros((self.n_cycles+1, self.n_vials+1), dtype = float)
         self.historical_drug_A_concentration = []
         self.historical_drug_B_concentration = []
         self.last_OD_measurements = np.zeros((self.ODs_per_cycle,self.n_vials+1))
-        self.growth_rate_estimate = np.zeros(self.n_vials)
-        self.final_OD_estimate = np.zeros(self.n_vials)
+        self.growth_rate_estimate = np.zeros((self.n_cycles,self.n_vials+1))
+        self.final_OD_estimate = np.zeros((self.n_cycles,self.n_vials+1))
 
         # counters
         self.OD_measurement_counter = 0
@@ -171,13 +174,24 @@ class morbidostat(object):
         
         # file names
         tmp_time = time.localtime()
-        self.base_name = "".join(map(str, [tmp_time.tm_year, 
+        self.base_name = '../data/'+"".join(map(str, [tmp_time.tm_year, 
                                            tmp_time.tm_mon, 
                                            tmp_time.tm_mday])
-                                 ) + '_'.join([self.bug, self.drug])
-        self.OD_fname = self.base_name+'_OD.txt'
-        self.decisions_fname = self.base_name+'_decisions.txt'
-        self.drug_conc_fname = self.base_name+'_vials_drug_concentrations.txt'
+                                 ) + '_'.join(['',self.bug, self.drug, self.experiment_type])+'/'
+        if os.path.exists(self.base_name):
+            print self.base_name+"directory already exists"
+        else:
+            os.mkdir(self.base_name)
+        if not os.path.exists(self.base_name+'/OD'):
+            os.mkdir(self.base_name+'OD/')
+            
+        self.OD_fname = self.base_name+'OD/OD'
+        self.decisions_fname = self.base_name+'decisions.txt'
+        self.drug_conc_fname = self.base_name+'vials_drug_concentrations.txt'
+        self.temperature_fname = self.base_name+'temperature.txt'
+        self.cycle_OD_fname = self.base_name+'cycle_OD_estimate.txt'
+        self.growth_rate_fname = self.base_name+'growth_rate_estimates.txt'
+
         self.display_OD = True
         self.stopped=False
         self.interrupted =False
@@ -186,33 +200,45 @@ class morbidostat(object):
         self.n_reps=1
         self.rep_dt = 0.001
 
+    def experiment_time(self):
+        return (time.time()-self.experiment_start)/self.second
 
     def save_data(self):
         '''
         save the entire arrays to file. note that this will save a LOT of zeroes
         at the beginning of the experiment and generally tends to overwrite files 
-        often with the same data -> come up with something more clever
+        often with the same data. Only OD is saved cycle wise
         '''
-        np.savetxt(self.OD_fname, self.OD)
-        np.savetxt(self.decisions, self.decisions)
-        np.savetxt(self.drug_conc_fname, self.vial_drug_concentration)
+        np.savetxt(self.OD_fname+'_cycle_'+str(self.cycle_counter)+'.dat', self.OD[self.cycle_counter], fmt='%2.3f')
+        np.savetxt(self.decisions_fname, self.decisions, fmt='%2.3f')
+        np.savetxt(self.drug_conc_fname, self.vial_drug_concentration,fmt='%2.6f')
+        np.savetxt(self.temperature_fname, self.temperatures, fmt='%2.1f')
+        np.savetxt(self.growth_rate_fname, self.growth_rate_estimate,fmt='%2.6f')
+        np.savetxt(self.cycle_OD_fname, self.final_OD_estimate,fmt='%2.3f')
 
 
     def start_experiment(self):
-        self.cycle_thread = threading.Thread(target = self.run_morbidostat)
-        if self.display_OD:
-            n_cols = 3
-            n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
-            self.data_figure = plt.figure(figsize = (n_cols*3, min(12,n_rows*3)))
-            self.OD_animation = animation.FuncAnimation(self.data_figure, self.update_plot, 
-                                                        init_func=self.init_data_plot, interval = 10000)
-            plt.draw()
-            plt.show()
-            #self.plot_thread = threading.Thread(target = self.plot_OD)
-            #self.plot_thread.start()
-        self.experiment_start = time.time()
-        self.cycle_thread.start()
-        self.running = True
+        '''
+        start the thread measuring and feedbacking the cultures
+        start the OD animation if self.display_OD is True
+        '''
+        if self.running==False:
+            self.cycle_thread = threading.Thread(target = self.run_morbidostat)
+            if self.display_OD:
+                n_cols = 3
+                n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
+                self.data_figure = plt.figure(figsize = (n_cols*3, min(12,n_rows*3)))
+                self.OD_animation = animation.FuncAnimation(self.data_figure, self.update_plot, 
+                                                            init_func=self.init_data_plot, interval = self.cycle_dt*self.second*1000)
+                plt.ion()
+                plt.draw()
+                plt.show()
+
+            self.experiment_start = time.time()
+            self.cycle_thread.start()
+            self.running = True
+        else:
+            print "experiment already running"
 
     def stop_experiment(self):
         '''
@@ -222,15 +248,17 @@ class morbidostat(object):
         if self.cycle_counter<self.n_cycles and self.running:
             print "Stopping the cycle thread, waiting for cycle to finish"
             self.cycle_thread.join()
-            self.running=False
 
         if self.display_OD:
             try:
-                self.data_figure.close()
+                self.OD_animation.repeat=False
+                self.OD_animation._stop()
+                #plt.close(self.data_figure)
             except:
                 pass
         print "experiment has finished. disconnecting the morbidostat"
         self.morb.disconnect()
+        self.running=False
         
     def interrupt_experiment(self):
         '''
@@ -242,6 +270,8 @@ class morbidostat(object):
         if self.cycle_counter<self.n_cycles and self.running:
             print "Stopping the cycle thread, waiting for cycle to finish"
             self.cycle_thread.join()
+            if self.display_OD:
+                self.OD_animation.repeat=False
         print "recording stopped, safe to disconnect"
 
 
@@ -256,6 +286,8 @@ class morbidostat(object):
             self.interrupted=False
             self.running = True
             self.cycle_thread.start()
+            if self.display_OD:
+                self.OD_animation.repeat=True
             print "morbidostat restarted in cycle", self.cycle_counter
         else:
             print "experiment is not interrupted"
@@ -269,7 +301,7 @@ class morbidostat(object):
 
     def run_morbidostat(self):
         '''
-        loop over cycles, call the 
+        loop over cycles, call the morbidostat cycle function
         '''
         initial_cycle_count = self.cycle_counter
         for ci in xrange(initial_cycle_count, self.n_cycles):
@@ -277,6 +309,7 @@ class morbidostat(object):
                 print "#####################\n# Cycle",ci,"\n##################"
             tmp_cycle_start = time.time()
             self.morbidostat_cycle()
+            self.save_data()
             remaining_time = self.cycle_dt-(time.time()-tmp_cycle_start)/self.second
             if remaining_time>0:
                 time.sleep(remaining_time*self.second)
@@ -287,10 +320,12 @@ class morbidostat(object):
             self.cycle_counter+=1
             if self.stopped or self.interrupted:
                 break
+        if self.cycle_counter==self.n_cycles:
+            self.stop_experiment()
 
 
     def morbidostat_cycle(self):
-        t = (time.time()-self.experiment_start)/self.second
+        t = self.experiment_time()
         self.morb.measure_temperature()
         self.OD_measurement_counter=0
         self.OD_thread = threading.Thread(target = self.measure_OD_for_cycle)
@@ -301,11 +336,18 @@ class morbidostat(object):
             print("morbidostat_cycle: OD measurement timed out")
 
         self.estimate_growth_rates()
-        self.feedback_on_OD()
+        if  self.experiment_type=="morbidostat":
+            self.feedback_on_OD()
+        elif self.experiment_type =="fixed_OD":
+            self.dilute_to_OD()
+        elif self.experiment_type=="growth_rate":
+            pass
+        else:
+            print "unknown experiment type:", self.experiment_type
         self.morb.wait_until_mixed()
         
-        self.temperatures[self.cycle_counter,0] = t
-        self.temperatures[self.cycle_counter,1:] = self.morb.temperatures
+        self.temperatures[self.cycle_counter,-1] = t
+        self.temperatures[self.cycle_counter,:2] = self.morb.temperatures
 
 
     def measure_OD_for_cycle(self):
@@ -328,16 +370,17 @@ class morbidostat(object):
         stores it in last_OD_measurement. Increments OD_measurement_counter by 1
         the IR LEDS are switched off at the end.
         '''
-        t = (time.time()-self.experiment_start)/self.second
+        t = self.experiment_time()
         if debug:
             print "OD",
+        self.last_OD_measurements[self.OD_measurement_counter, :] = 0
         for rep in xrange(self.n_reps):
             for vi,vial in enumerate(self.vials):
-                self.last_OD_measurements[self.OD_measurement_counter, vi] = self.morb.measure_OD(vial, 1, self.rep_dt, False)
+                self.last_OD_measurements[self.OD_measurement_counter, vi] += self.morb.measure_OD(vial, 1, 0, False)
                 if debug:
                      print np.round(self.last_OD_measurements[self.OD_measurement_counter, vi],4),
             
-        self.last_OD_measurements[self.OD_measurement_counter, :] /= self.nreps
+        self.last_OD_measurements[self.OD_measurement_counter, :] /= self.n_reps
         if debug:
             print 
         self.last_OD_measurements[self.OD_measurement_counter,-1]=t
@@ -356,8 +399,8 @@ class morbidostat(object):
             for vi, vial in enumerate(self.vials):
                 tmp_regress = stats.linregress(tmp_time_array,
                                                np.log(self.last_OD_measurements[:self.OD_measurement_counter,vi]))
-                self.growth_rate_estimate[vi] = tmp_regress[0]
-                self.final_OD_estimate[vi] = np.exp(tmp_regress[1])
+                self.growth_rate_estimate[self.cycle_counter,vi] = tmp_regress[0]
+                self.final_OD_estimate[self.cycle_counter,vi] = np.exp(tmp_regress[1])
                 if debug:
                     print "growth vial",vial, tmp_regress[0], tmp_regress[1]
                 if tmp_regress[2]<0.5:
@@ -365,6 +408,9 @@ class morbidostat(object):
                     for q,x in zip(['slope', 'intercept', 'r-val','p-val'], np.round(tmp_regress[:4],4)): 
                         print q,'\t',x
                     print
+            self.growth_rate_estimate[self.cycle_counter,-1]=self.experiment_time()
+            self.final_OD_estimate[self.cycle_counter,-1]=self.experiment_time()
+            
         else:
             print("morbidostat_experiment: no data")
             
@@ -379,25 +425,25 @@ class morbidostat(object):
         the dilution counter is incremented at the end
         '''
         for vi, vial in enumerate(self.vials):
-            if self.final_OD_estimate[vi]<self.dilution_threshold:
+            if self.final_OD_estimate[self.cycle_counter,vi]<self.dilution_threshold:
                 tmp_decision = do_nothing
-                vol_mod=1
+                vol_mod=0
             else:
-                if (self.target_growth_rate-self.growth_rate_estimate[vi])*self.OD_dt \
-                        + (self.target_OD-self.final_OD_estimate[vi])/3>0:
+                if (self.target_growth_rate-self.growth_rate_estimate[self.cycle_counter,vi])*self.OD_dt \
+                        + (self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/3>0:
                     if self.vial_drug_concentration[self.cycle_counter,vi]<self.drugA_concentration:
                         tmp_decision, vol_mod = dilute_w_medium, max(0,
-                              min(2,1-(self.target_OD-self.final_OD_estimate[vi])/self.target_OD))
+                              min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
                     else:
                         tmp_decision, vol_mod = dilute_w_drugA,max(0, 
-                              min(2,1-(self.target_OD-self.final_OD_estimate[vi])/self.target_OD))
+                              min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
                 else:
                     if self.vial_drug_concentration[self.cycle_counter, vi]<0.5*self.drugA_concentration:
                         tmp_decision, vol_mod = dilute_w_drugA, max(0,
-                              min(2, 1+(self.target_OD-self.final_OD_estimate[vi])/self.target_OD))
+                              min(2, 1+(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
                     else:
                         tmp_decision, vol_mod = dilute_w_drugB, max(0,
-                              min(2,1+(self.target_OD-self.final_OD_estimate[vi])/self.target_OD))
+                              min(2,1+(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
 
             
             if tmp_decision[1]>0:
@@ -411,18 +457,35 @@ class morbidostat(object):
                     self.vial_drug_concentration[self.cycle_counter+1,vi]+=\
                         self.drugB_concentration*(1-self.dilution_factor)
 
-                self.decisions[self.cycle_counter,vial] = tmp_decision[1]
+                self.decisions[self.cycle_counter,vi] = tmp_decision[1]
+            else:
+                self.vial_drug_concentration[self.cycle_counter+1,vi] = \
+                    self.vial_drug_concentration[self.cycle_counter,vi]
+            self.vial_drug_concentration[self.cycle_counter,-1]=self.experiment_time()
 
-        print 'Cycle:',self.cycle_counter, np.round(time.time()-self.experiment_start)
-        print 'Growth rate:\t',
-        for x in self.growth_rate_estimate: print '\t',np.round(x/self.target_growth_rate,2),
-        print '\nOD:\t\t',
-        for x in self.final_OD_estimate: print '\t',np.round(x/self.target_OD,2),
-        print '\nDecision:\t',
+                
+        print 'Cycle:',self.cycle_counter, self.experiment_time()
+        print 'Growth rate (rel to target):',
+        for x in self.growth_rate_estimate[self.cycle_counter,:-1]: print '\t',np.round(x/self.target_growth_rate,2),
+        print '\nOD (rel to target):\t',
+        for x in self.final_OD_estimate[self.cycle_counter,:-1]: print '\t',np.round(x/self.target_OD,2),
+        print '\nDecision:\t\t',
         for x in self.decisions[self.cycle_counter,:-1]: print '\t',x,
         print '\n'
 
-
+    def dilute_to_OD(self):
+        '''
+        does nothing if OD is below target OD, dilutes as necessary (within limits) if OD is high
+        '''
+        for vi, vial in enumerate(self.vials):
+            if self.final_OD_estimate[self.cycle_counter,vi]<self.target_OD:
+                tmp_decision = do_nothing
+                volume_to_add=0
+            else:
+                volume_to_add = min(5,(self.final_OD_estimate[self.cycle_counter,vi]-self.target_OD)*self.culture_volume/self.target_OD)
+                self.morb.inject_volume(dilute_w_medium[0], vial, volume_to_add)
+            print "dilute vial ",vial,'with', np.round(volume_to_add,3), 'previous OD', np.round(self.final_OD_estimate[self.cycle_counter,vi],3)
+            self.decisions[self.cycle_counter,vi] = volume_to_add
 
     def init_data_plot(self):
         '''
