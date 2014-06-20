@@ -149,7 +149,16 @@ class morbidostat(object):
         self.bug = bug
         self.drugA_concentration = drugA_concentration
         self.drugB_concentration = drugB_concentration
+        # data acqusition specifics
+        self.n_reps=1
+        self.rep_dt = 0.001
+        # diagnostic variables
+        self.display_OD = True
+        self.stopped=False
+        self.interrupted =False
+        self.running = False
 
+    def set_up(self):
         # allocate memory for measurements and culture decisions
         self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time)//self.OD_dt
         self.n_cycles = self.experiment_duration//self.cycle_dt
@@ -177,7 +186,7 @@ class morbidostat(object):
         self.base_name = '../data/'+"".join(map(str, [tmp_time.tm_year, 
                                            tmp_time.tm_mon, 
                                            tmp_time.tm_mday])
-                                 ) + '_'.join(['',self.bug, self.drug, self.experiment_type])+'/'
+                                 ) + '_'.join(['',self.experiment_name,self.bug, self.drug, self.experiment_type])+'/'
         if os.path.exists(self.base_name):
             print self.base_name+"directory already exists"
         else:
@@ -191,14 +200,6 @@ class morbidostat(object):
         self.temperature_fname = self.base_name+'temperature.txt'
         self.cycle_OD_fname = self.base_name+'cycle_OD_estimate.txt'
         self.growth_rate_fname = self.base_name+'growth_rate_estimates.txt'
-
-        self.display_OD = True
-        self.stopped=False
-        self.interrupted =False
-        self.running = False
-        # data acqusition specifics
-        self.n_reps=1
-        self.rep_dt = 0.001
 
     def experiment_time(self):
         return (time.time()-self.experiment_start)/self.second
@@ -223,6 +224,7 @@ class morbidostat(object):
         start the OD animation if self.display_OD is True
         '''
         if self.running==False:
+            self.set_up()
             self.cycle_thread = threading.Thread(target = self.run_morbidostat)
             if self.display_OD:
                 n_cols = 3
