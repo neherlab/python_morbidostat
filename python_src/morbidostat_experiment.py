@@ -1,5 +1,5 @@
 from __future__ import division
-import arduino_interface as morb
+#import arduino_interface as morb
 import morbidostat_simulator as morb
 import numpy as np
 from scipy.stats import linregress
@@ -15,6 +15,10 @@ do_nothing = ('as is',1)
 dilute_w_medium = ('medium',2)
 dilute_w_drugA = ('drugA', 3)
 dilute_w_drugB = ('drugB', 4)
+
+MORBIDOSTAT_EXPERIMENT = 'morbidostat'
+GROWTH_RATE_EXPERIMENT = 'growth_rate'
+FIXED_OD_EXPERIMENT = 'fixed_OD'
 
 def calibrate_OD(vials = None):
     '''
@@ -110,10 +114,10 @@ class morbidostat(object):
     '''
     
     def __init__(self, vials = range(15), experiment_duration = 2*60*60, 
-                 target_OD = 0.1, diluation_factor = 0.9, bug = '', drug ='',
+                 target_OD = 0.1, diluation_factor = 0.9, bug = '', drugA ='',drugB ='',
                  drugA_concentration = 0.3, drugB_concentration = 2.0, OD_dt = 30, cycle_dt = 600):
         # the default experiment is a morbidostat measurement
-        self.experiment_type = 'morbidostat'
+        self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
         self.second = 0.01
@@ -144,7 +148,8 @@ class morbidostat(object):
         self.dilution_volume = self.culture_volume*(1.0-self.dilution_factor)
         self.dilution_threshold = 0.03
         self.target_growth_rate = -np.log(self.dilution_factor)/self.cycle_dt
-        self.drug = drug
+        self.drugA = drugA
+        self.drugB = drugB
         self.experiment_name = ''
         self.bug = bug
         self.drugA_concentration = drugA_concentration
@@ -157,6 +162,7 @@ class morbidostat(object):
         self.stopped=False
         self.interrupted =False
         self.running = False
+        self.cycle_counter=0
 
     def set_up(self):
         # allocate memory for measurements and culture decisions
@@ -167,6 +173,8 @@ class morbidostat(object):
         self.temperatures = np.zeros((self.n_cycles, 3))
         self.decisions = np.zeros((self.n_cycles, self.n_vials+1), dtype = float)
         self.vial_drug_concentration = np.zeros((self.n_cycles+1, self.n_vials+1), dtype = float)
+        self.vial_drug_concentration[:,-1]=np.arange(self.n_cycles+1)*self.cycle_dt
+
         self.historical_drug_A_concentration = []
         self.historical_drug_B_concentration = []
         self.last_OD_measurements = np.zeros((self.ODs_per_cycle,self.n_vials+1))
@@ -186,7 +194,7 @@ class morbidostat(object):
         self.base_name = '../data/'+"".join(map(str, [tmp_time.tm_year, 
                                            tmp_time.tm_mon, 
                                            tmp_time.tm_mday])
-                                 ) + '_'.join(['',self.experiment_name,self.bug, self.drug, self.experiment_type])+'/'
+                                 ) + '_'.join(['',self.experiment_name,self.bug, self.drugA,self.drugB, self.experiment_type])+'/'
         if os.path.exists(self.base_name):
             print self.base_name+"directory already exists"
         else:
@@ -227,14 +235,18 @@ class morbidostat(object):
             self.set_up()
             self.cycle_thread = threading.Thread(target = self.run_morbidostat)
             if self.display_OD:
+                self.figure_thread = threading.Thread(target = self.cycle_figure)
                 n_cols = 3
                 n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
-                self.data_figure = plt.figure(figsize = (n_cols*3, min(12,n_rows*3)))
-                self.OD_animation = animation.FuncAnimation(self.data_figure, self.update_plot, 
-                                                            init_func=self.init_data_plot, interval = self.cycle_dt*self.second*1000)
                 plt.ion()
-                plt.draw()
+                self.data_figure = plt.figure(figsize = (n_cols*3, min(12,n_rows*3)))
+                self.init_data_plot()
                 plt.show()
+#                self.OD_animation = animation.FuncAnimation(self.data_figure, self.update_plot, 
+#                                                            init_func=self.init_data_plot,
+#                                                            interval = self.cycle_dt*self.second*1000)
+                self.figure_thread.start()
+                plt.draw()
 
             self.experiment_start = time.time()
             self.cycle_thread.start()
@@ -242,19 +254,26 @@ class morbidostat(object):
         else:
             print "experiment already running"
 
+    def cycle_figure(self, ):
+        while not self.stopped:
+            self.update_plot(0)
+            time.sleep(self.cycle_dt*self.second*0.5)
+    
+
     def stop_experiment(self):
         '''
         set the stop signal and wait for threads to finish
         '''
         self.stopped = True
-        if self.cycle_counter<self.n_cycles and self.running:
+        if self.running and self.cycle_counter<self.n_cycles:
             print "Stopping the cycle thread, waiting for cycle to finish"
             self.cycle_thread.join()
 
         if self.display_OD:
             try:
-                self.OD_animation.repeat=False
-                self.OD_animation._stop()
+                self.figure_thread.join()
+                #self.OD_animation.repeat=False
+                #self.OD_animation._stop()
                 #plt.close(self.data_figure)
             except:
                 pass
@@ -338,11 +357,11 @@ class morbidostat(object):
             print("morbidostat_cycle: OD measurement timed out")
 
         self.estimate_growth_rates()
-        if  self.experiment_type=="morbidostat":
+        if  self.experiment_type==MORBIDOSTAT_EXPERIMENT:
             self.feedback_on_OD()
-        elif self.experiment_type =="fixed_OD":
+        elif self.experiment_type ==FIXED_OD_EXPERIMENT:
             self.dilute_to_OD()
-        elif self.experiment_type=="growth_rate":
+        elif self.experiment_type==GROWTH_RATE_EXPERIMENT:
             pass
         else:
             print "unknown experiment type:", self.experiment_type
@@ -494,6 +513,7 @@ class morbidostat(object):
         this function sets up the plot of the OD and the antibiotic concentration
         in each of the 
         '''
+        print "init figure"
         # there is a subplot for each vial which share axis. hence they are stacked
         n_cols = 3 # supplots are arranged in rows of 3
         n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
@@ -507,7 +527,8 @@ class morbidostat(object):
             self.subplots[vi].append(self.subplots[vi][0].twinx())
             self.plotted_line_objects[vi] = [self.subplots[vi][0].plot([],[], c='b')[0], 
                                              self.subplots[vi][1].plot([],[], c='r')[0]]
-            #self.subplots[vi][0].plot([0,self.experiment_duration], [self.target_OD, self.target_OD], ls='--', c='k')
+            self.subplots[vi][0].text(0.1, 0.9, 'vial '+str(vial+1), transform=self.subplots[vi][0].transAxes)
+            #       self.subplots[vi][0].plot([0,self.experiment_duration], [self.target_OD, self.target_OD], ls='--', c='k')
 
             # set up the axis such that the only the left most axis shows OD and ticks
             # and only the rightmost axis shows the antibiotic and ticks
@@ -544,18 +565,24 @@ class morbidostat(object):
             y_data = np.zeros(n_cycles_to_show*self.ODs_per_cycle)
             y_alt_data = np.zeros(n_cycles_to_show*self.ODs_per_cycle)
             for cii, ci in enumerate(range(first_plot_cycle, last_plot_cycle)):
-                x_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle] = self.OD[ci][:,-1]/display_unit
-                y_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle] = self.OD[ci][:,vi]
-                y_alt_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle] = self.vial_drug_concentration[ci,vi]                
-       
-            max_OD = max(max_OD, np.max(y_data))
-            max_AB = max(max_AB, np.max(y_alt_data))
+                if ci<self.cycle_counter:
+                    x_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle] = self.OD[ci][:,-1]/display_unit
+                    y_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle] = self.OD[ci][:,vi]
+                    y_alt_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle] = self.vial_drug_concentration[ci,vi]
+                else:
+                    x_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle] =np.nan
+                    y_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle]=np.nan
+                    y_alt_data[cii*self.ODs_per_cycle:(cii+1)*self.ODs_per_cycle] =np.nan
+
+            max_OD = max(max_OD, np.max(np.ma.masked_invalid(y_data)))
+            max_AB = max(max_AB, np.max(np.ma.masked_invalid(y_alt_data)))
             self.plotted_line_objects[vi][0].set_data(x_data, y_data)
             self.plotted_line_objects[vi][1].set_data(x_data, y_alt_data)
 
         for vi, vial  in enumerate(self.vials):
             self.subplots[vi][0].set_ylim([0,max_OD*1.2+0.01])
-            self.subplots[vi][0].set_xlim([np.min(x_data), np.max(x_data)+self.OD_dt/display_unit])
+            self.subplots[vi][0].set_xlim([np.min(np.ma.masked_invalid(x_data)),
+                                           np.max(np.ma.masked_invalid(x_data))+self.OD_dt/display_unit])
             self.subplots[vi][1].set_ylim([0,max_AB*1.2+0.01])
-        #plt.draw()
+        plt.draw()
 
