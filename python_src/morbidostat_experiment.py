@@ -134,6 +134,8 @@ class morbidostat(object):
         self.OD_dt = OD_dt
         self.cycle_dt = cycle_dt
         self.experiment_duration = experiment_duration
+        self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time)//self.OD_dt
+        self.n_cycles = self.experiment_duration//self.cycle_dt
 
         if (np.max(vials)<15):
             self.vials = copy.copy(vials)
@@ -157,9 +159,13 @@ class morbidostat(object):
         # data acqusition specifics
         self.n_reps=1
         self.rep_dt = 0.001
+        # counters
+        self.OD_measurement_counter = 0
+        self.cycle_counter = 0
+
         # diagnostic variables
         self.display_OD = True
-        self.stopped=False
+        self.stopped=True
         self.interrupted =False
         self.running = False
         self.cycle_counter=0
@@ -180,10 +186,6 @@ class morbidostat(object):
         self.last_OD_measurements = np.zeros((self.ODs_per_cycle,self.n_vials+1))
         self.growth_rate_estimate = np.zeros((self.n_cycles,self.n_vials+1))
         self.final_OD_estimate = np.zeros((self.n_cycles,self.n_vials+1))
-
-        # counters
-        self.OD_measurement_counter = 0
-        self.cycle_counter = 0
 
         # threads handling repeated measurements
         self.cycle_thread = None
@@ -251,6 +253,8 @@ class morbidostat(object):
             self.experiment_start = time.time()
             self.cycle_thread.start()
             self.running = True
+            self.stopped = False
+            self.interrupted=False
         else:
             print "experiment already running"
 
@@ -287,13 +291,17 @@ class morbidostat(object):
         this should stop after the OD measurement and growth rate estimate,
         but before the dilutions (but this is not essential)
         '''
-        self.interrupted = True
-        if self.cycle_counter<self.n_cycles and self.running:
-            print "Stopping the cycle thread, waiting for cycle to finish"
-            self.cycle_thread.join()
-            if self.display_OD:
-                self.OD_animation.repeat=False
-        print "recording stopped, safe to disconnect"
+        if self.running:            
+            self.interrupted = True
+            if self.cycle_counter<self.n_cycles and self.running:
+                print "Stopping the cycle thread, waiting for cycle to finish"
+                self.cycle_thread.join()
+                if self.display_OD:
+                    pass
+                    #self.OD_animation.repeat=False
+            print "recording stopped, safe to disconnect"
+        else:
+            print "experiment not running"
 
 
     def resume_experiment(self):
@@ -308,7 +316,8 @@ class morbidostat(object):
             self.running = True
             self.cycle_thread.start()
             if self.display_OD:
-                self.OD_animation.repeat=True
+                pass
+                #self.OD_animation.repeat=True
             print "morbidostat restarted in cycle", self.cycle_counter
         else:
             print "experiment is not interrupted"
@@ -553,6 +562,9 @@ class morbidostat(object):
         this function is called repeatedly and redraws the plot after adding new data
         the axis are rescaled but kept identical in each subplot
         '''
+        if not (self.running and self.display_OD):
+            return
+        
         n_cycles_to_show = 5
         display_unit = 60
         first_plot_cycle = max(0,self.cycle_counter-n_cycles_to_show)

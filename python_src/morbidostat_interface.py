@@ -1,5 +1,7 @@
 from morbidostat_experiment import *
 import Tkinter
+import threading
+
 
 class set_up_dialog(Tkinter.Frame):
     def __init__(self, morb):
@@ -108,6 +110,8 @@ class morbidostat_interface(Tkinter.Frame):
     def __init__(self, master):
         self.master = master        
         self.morb = morbidostat()
+        self.all_good=True
+        self.update_status_thread = threading.Thread(target = self.update_status_strings)
         self.run_time_window()
 
     def call_set_up(self):
@@ -116,33 +120,111 @@ class morbidostat_interface(Tkinter.Frame):
     
 
     def quit(self):
+        self.all_good=False
+        self.morb.update_plot(0)
         self.morb.stop_experiment()
         self.run_time_frame.quit()
+
+    def start(self):
+        self.all_good=True
+        self.morb.start_experiment()
+        self.update_status_strings()
+
+    def interrupt(self):
+        self.all_good=True
+        self.morb.interrupt_experiment()
+        self.update_status_strings()
+
+    def resume(self):
+        self.all_good=True
+        self.morb.resume_experiment()
+        self.update_status_strings()
+
+
+    def status_str(self):
+        if self.morb.running and not self.morb.interrupted:
+            return "running"
+        elif self.morb.interrupted:
+            return "interrupted"
+        elif self.morb.stopped:
+            return "stopped"
+        else:
+            return "undefined"
+
+    def remaining_time_str(self):
+        remaining_time = (self.morb.n_cycles-self.morb.cycle_counter)*self.morb.cycle_dt
+        return self.seconds_to_time_str(remaining_time)
+            
+    def elapsed_time_str(self):
+        remaining_time = (self.morb.cycle_counter)*self.morb.cycle_dt
+        return self.seconds_to_time_str(remaining_time)
+
+    def remaining_cycle_time_str(self):
+        remaining_time = (self.morb.ODs_per_cycle-self.morb.OD_measurement_counter)*self.morb.OD_dt
+        return self.seconds_to_time_str(remaining_time)
+
+    def seconds_to_time_str(self,nsec):
+        hours = nsec//3600
+        minutes = nsec//60 - hours*60
+        seconds = nsec-60*minutes-hours*3600
+        return str(hours)+'h:'+format(minutes,'02d')+'m:'+format(seconds,'02d')+'s'        
+        
 
     def run_time_window(self):
         self.run_time_frame = Tkinter.Frame(self.master)
         self.master.title("Morbidostat control")
         self.run_time_frame.pack()
+        label_font= 'Helvetica'
+        var_font = 'Courier'
+        fsize = 16
+        self.status_label = Tkinter.Label(self.run_time_frame, text='Status: ', fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
+        self.elapsed_time = Tkinter.Label(self.run_time_frame, text  = 'Elapsed time:', fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
+        self.remaining_time = Tkinter.Label(self.run_time_frame, text  = 'Remaining time:', fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
+        self.remaining_cycle_time = Tkinter.Label(self.run_time_frame, text  = 'Remaining in cycle: ', fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
+        self.status_label_val = Tkinter.Label(self.run_time_frame, text=self.status_str(), fg="black", anchor=Tkinter.W, height = 2, width= 10, font=(var_font, fsize))
+        self.elapsed_time_val = Tkinter.Label(self.run_time_frame, text  = self.elapsed_time_str(), fg="black", anchor=Tkinter.W, height = 2, width= 10, font=(var_font, fsize))
+        self.remaining_time_val = Tkinter.Label(self.run_time_frame, text  = self.remaining_time_str(), fg="black", anchor=Tkinter.W, height = 2, width= 10, font=(var_font, fsize))
+        self.remaining_cycle_time_val = Tkinter.Label(self.run_time_frame, text  = self.remaining_cycle_time_str(), fg="black", anchor=Tkinter.W, height = 2, width= 10, font=(var_font, fsize))
 
         self.set_up_button = Tkinter.Button(self.run_time_frame, text="PARAMETERS", fg="black", 
-                                   command=self.call_set_up)
+                                   command=self.call_set_up, height = 2)
+        self.refresh_button = Tkinter.Button(self.run_time_frame, text="REFRESH", fg="black", 
+                                   command=self.update_status_strings, height = 2)
         self.start_button = Tkinter.Button(self.run_time_frame, text="START", fg="black", 
-                                   command=self.morb.start_experiment)
+                                   command=self.start, height = 2)
         self.interrupt_button =Tkinter.Button(self.run_time_frame, text="INTERRUPT", fg="red", 
-                                  command=self.morb.interrupt_experiment)
+                                  command=self.interrupt, height = 2)
         self.resume_button = Tkinter.Button(self.run_time_frame, text="RESUME", fg="black", 
-                                    command=self.morb.resume_experiment)
+                                    command=self.resume, height = 2)
         self.quit_button = Tkinter.Button(self.run_time_frame, text="QUIT", fg="black", 
-                                          command=self.quit)
+                                          command=self.quit, height = 2)
 
+        self.status_label.grid(row=0, column=0, columnspan=2)
+        self.elapsed_time.grid(row=1, column=0, columnspan=2)
+        self.remaining_time.grid(row=2, column=0, columnspan=2)
+        self.remaining_cycle_time.grid(row=3, column=0, columnspan=2)
+        self.status_label_val.grid(row=0, column=2, columnspan=3)
+        self.elapsed_time_val.grid(row=1, column=2, columnspan=3)
+        self.remaining_time_val.grid(row=2, column=2, columnspan=3)
+        self.remaining_cycle_time_val.grid(row=3, column=2, columnspan=3)
         self.set_up_button.grid(row= 5, column = 0)
-        self.start_button.grid(row= 5, column = 1)
-        self.interrupt_button.grid(row= 5, column = 2)
-        self.resume_button.grid(row= 5, column = 3)
-        self.quit_button.grid(row= 5, column = 4)
+        self.refresh_button.grid(row= 5, column = 1)
+        self.start_button.grid(row= 5, column = 2)
+        self.interrupt_button.grid(row= 5, column = 3)
+        self.resume_button.grid(row= 5, column = 4)
+        self.quit_button.grid(row= 5, column = 5)
 
-
-
+        #self.update_status_thread.start()
+    
+    def update_status_strings(self):
+#        while self.all_good:
+        self.status_label_val.configure(text=self.status_str())
+        self.elapsed_time_val.configure(text  = self.elapsed_time_str())
+        self.remaining_time_val.configure(text  = self.remaining_time_str())
+        self.remaining_cycle_time_val.configure(text  = self.remaining_cycle_time_str())
+        self.morb.update_plot(0)
+            #time.sleep(10)
+        
 
 
 if __name__ == '__main__':
