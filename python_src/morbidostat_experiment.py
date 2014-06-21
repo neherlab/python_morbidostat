@@ -120,7 +120,7 @@ class morbidostat(object):
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
-        self.second = 0.01
+        self.second = 0.02
 
         # set up the morbidostat
         self.morb = morb.morbidostat()
@@ -170,7 +170,7 @@ class morbidostat(object):
         self.AB_switch_conc = 0.3 # use high concentration if culture conc is 30% of drug A
         # diagnostic variables
         self.display_OD = True
-        self.display_within_OD = False
+        self.display_within_OD = True
         self.stopped=True
         self.interrupted =False
         self.running = False
@@ -248,7 +248,7 @@ class morbidostat(object):
             if self.display_OD:
                 n_cols = 3
                 n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
-                #plt.ion()
+                plt.ion()
                 self.data_figure = plt.figure(self.OD_fig_name, figsize = (n_cols*3, min(12,n_rows*3)))
                 self.init_data_plot()
                 if self.display_within_OD:
@@ -385,14 +385,15 @@ class morbidostat(object):
                 print "OD measurement:",self.OD_measurement_counter
             tmp_OD_measurement_start = time.time()
             self.measure_OD()
+            self.OD_measurement_counter+=1
+            if self.display_within_OD:
+               self.update_within_cycle_plot(0)
+
             remaining_time = self.OD_dt - (time.time()-tmp_OD_measurement_start)/self.second 
             if remaining_time>0:
                 time.sleep(remaining_time*self.second)
             else:
                 print("measure_OD_for_cycle: remaining time is negative"+str(remaining_time))
-            self.OD_measurement_counter+=1
-            if self.display_within_OD:
-               self.update_within_cycle_plot(0)
         self.OD[self.cycle_counter,:,:]=self.last_OD_measurements
 
     def measure_OD(self):
@@ -460,9 +461,10 @@ class morbidostat(object):
                 tmp_decision = do_nothing
                 vol_mod=0
             else:
-                expected_growth = (self.target_growth_rate-self.growth_rate_estimate[self.cycle_counter,vi])*self.OD_dt 
-                excess_OD = (self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])
-                if expected_growth>self.target_OD*self.max_growth_fraction or excess_OD>self.max_OD_deviation*self.target_OD:
+                expected_growth = (self.growth_rate_estimate[self.cycle_counter,vi]-self.target_growth_rate)*self.cycle_dt\
+                                    *self.final_OD_estimate[self.cycle_counter,vi]
+                excess_OD = (self.final_OD_estimate[self.cycle_counter,vi]-self.target_OD)
+                if expected_growth<self.target_OD*self.max_growth_fraction and excess_OD<self.max_OD_deviation*self.target_OD:
                     if self.vial_drug_concentration[self.cycle_counter,vi]<self.drugA_concentration:
                         tmp_decision, vol_mod = dilute_w_medium, max(0,
                               min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
@@ -600,7 +602,7 @@ class morbidostat(object):
         '''
         if not (self.running and self.display_OD):
             return
-        plt.ioff()
+        #plt.ioff()
         plt.figure(self.OD_fig_name)
         n_cycles_to_show = 5
         display_unit = 60
@@ -642,7 +644,7 @@ class morbidostat(object):
         '''
         if not (self.running and self.display_OD):
             return
-        plt.ioff()
+        #plt.ioff()
         plt.figure(self.within_cycle_fig_name)
         display_unit = 60
         mmax = self.OD_measurement_counter
