@@ -159,20 +159,29 @@ class morbidostat(object):
         # data acqusition specifics
         self.n_reps=1
         self.rep_dt = 0.001
+        self.buffer_time = 10
         # counters
         self.OD_measurement_counter = 0
         self.cycle_counter = 0
 
+        #feedback parameters
+        self.max_growth_fraction = 0.3  # increase antibiotics with 30% OD increase per cycle
+        self.max_OD_deviation = 0.2 # increase antibiotic if 20% above target OD
+        self.AB_switch_conc = 0.3 # use high concentration if culture conc is 30% of drug A
         # diagnostic variables
         self.display_OD = True
+        self.display_within_OD = False
         self.stopped=True
         self.interrupted =False
         self.running = False
-        self.cycle_counter=0
+        
+        # figure names
+        self.within_cycle_fig_name = "within cycle OD"
+        self.OD_fig_name = "long term OD"
 
     def set_up(self):
         # allocate memory for measurements and culture decisions
-        self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time)//self.OD_dt
+        self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time-self.buffer_time)//self.OD_dt
         self.n_cycles = self.experiment_duration//self.cycle_dt
 
         self.OD = np.zeros((self.n_cycles, self.ODs_per_cycle, self.n_vials+1), dtype = float)
@@ -237,17 +246,18 @@ class morbidostat(object):
             self.set_up()
             self.cycle_thread = threading.Thread(target = self.run_morbidostat)
             if self.display_OD:
-                self.figure_thread = threading.Thread(target = self.cycle_figure)
                 n_cols = 3
                 n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
-                plt.ion()
-                self.data_figure = plt.figure(figsize = (n_cols*3, min(12,n_rows*3)))
+                #plt.ion()
+                self.data_figure = plt.figure(self.OD_fig_name, figsize = (n_cols*3, min(12,n_rows*3)))
                 self.init_data_plot()
+                if self.display_within_OD:
+                    self.within_cycle_figure = plt.figure(self.within_cycle_fig_name, figsize = (n_cols*3, min(12,n_rows*3)))
+                    self.init_within_cycle_plot()
                 plt.show()
 #                self.OD_animation = animation.FuncAnimation(self.data_figure, self.update_plot, 
 #                                                            init_func=self.init_data_plot,
 #                                                            interval = self.cycle_dt*self.second*1000)
-                self.figure_thread.start()
                 plt.draw()
 
             self.experiment_start = time.time()
@@ -258,12 +268,6 @@ class morbidostat(object):
         else:
             print "experiment already running"
 
-    def cycle_figure(self, ):
-        while not self.stopped:
-            self.update_plot(0)
-            time.sleep(self.cycle_dt*self.second*0.5)
-    
-
     def stop_experiment(self):
         '''
         set the stop signal and wait for threads to finish
@@ -273,14 +277,6 @@ class morbidostat(object):
             print "Stopping the cycle thread, waiting for cycle to finish"
             self.cycle_thread.join()
 
-        if self.display_OD:
-            try:
-                self.figure_thread.join()
-                #self.OD_animation.repeat=False
-                #self.OD_animation._stop()
-                #plt.close(self.data_figure)
-            except:
-                pass
         print "experiment has finished. disconnecting the morbidostat"
         self.morb.disconnect()
         self.running=False
@@ -340,6 +336,9 @@ class morbidostat(object):
             tmp_cycle_start = time.time()
             self.morbidostat_cycle()
             self.save_data()
+            self.cycle_counter+=1
+            if self.display_OD:
+                self.update_plot(0)
             remaining_time = self.cycle_dt-(time.time()-tmp_cycle_start)/self.second
             if remaining_time>0:
                 time.sleep(remaining_time*self.second)
@@ -347,7 +346,6 @@ class morbidostat(object):
                     print "run_morbidostat: remaining time", remaining_time
             else:
                 print("run_morbidostat: remaining time is negative"+str(remaining_time))
-            self.cycle_counter+=1
             if self.stopped or self.interrupted:
                 break
         if self.cycle_counter==self.n_cycles:
@@ -381,6 +379,7 @@ class morbidostat(object):
 
 
     def measure_OD_for_cycle(self):
+        self.last_OD_measurements[:] = 0
         for oi in xrange(self.ODs_per_cycle):
             if debug:
                 print "OD measurement:",self.OD_measurement_counter
@@ -392,6 +391,8 @@ class morbidostat(object):
             else:
                 print("measure_OD_for_cycle: remaining time is negative"+str(remaining_time))
             self.OD_measurement_counter+=1
+            if self.display_within_OD:
+               self.update_within_cycle_plot(0)
         self.OD[self.cycle_counter,:,:]=self.last_OD_measurements
 
     def measure_OD(self):
@@ -459,8 +460,9 @@ class morbidostat(object):
                 tmp_decision = do_nothing
                 vol_mod=0
             else:
-                if (self.target_growth_rate-self.growth_rate_estimate[self.cycle_counter,vi])*self.OD_dt \
-                        + (self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/3>0:
+                expected_growth = (self.target_growth_rate-self.growth_rate_estimate[self.cycle_counter,vi])*self.OD_dt 
+                excess_OD = (self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])
+                if expected_growth>self.target_OD*self.max_growth_fraction or excess_OD>self.max_OD_deviation*self.target_OD:
                     if self.vial_drug_concentration[self.cycle_counter,vi]<self.drugA_concentration:
                         tmp_decision, vol_mod = dilute_w_medium, max(0,
                               min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
@@ -468,7 +470,7 @@ class morbidostat(object):
                         tmp_decision, vol_mod = dilute_w_drugA,max(0, 
                               min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
                 else:
-                    if self.vial_drug_concentration[self.cycle_counter, vi]<0.5*self.drugA_concentration:
+                    if self.vial_drug_concentration[self.cycle_counter, vi]<self.AB_switch_conc*self.drugA_concentration:
                         tmp_decision, vol_mod = dilute_w_drugA, max(0,
                               min(2, 1+(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
                     else:
@@ -526,8 +528,9 @@ class morbidostat(object):
         # there is a subplot for each vial which share axis. hence they are stacked
         n_cols = 3 # supplots are arranged in rows of 3
         n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
+        plt.figure(self.OD_fig_name)
         plt.subplots_adjust(hspace = .001,wspace = .001)
-        
+        plt.suptitle('OD long term')
         vi = 0
         self.subplots = {}
         self.plotted_line_objects = {}
@@ -556,6 +559,39 @@ class morbidostat(object):
             else:
                 self.subplots[vi][0].set_xlabel('time')
 
+    def init_within_cycle_plot(self):
+        '''
+        this function sets up the plot of the OD within a cycle
+        '''
+        print "init within cycle plot figure"
+        # there is a subplot for each vial which share axis. hence they are stacked
+        n_cols = 3 # supplots are arranged in rows of 3
+        n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
+        plt.figure(self.within_cycle_fig_name)
+        plt.subplots_adjust(hspace = .001,wspace = .001)
+        plt.suptitle('OD within cycle')
+        vi = 0
+        self.within_cycle_subplots = {}
+        self.within_plotted_line_objects = {}
+        for vi, vial  in enumerate(self.vials):
+            self.within_cycle_subplots[vi] = [plt.subplot(n_rows, n_cols, vi+1)]
+            self.within_plotted_line_objects[vi] = [self.within_cycle_subplots[vi][0].plot([],[], c='b')[0]]
+            self.within_cycle_subplots[vi][0].text(0.1, 0.9, 'vial '+str(vial+1), transform=self.within_cycle_subplots[vi][0].transAxes)
+            #       self.subplots[vi][0].plot([0,self.experiment_duration], [self.target_OD, self.target_OD], ls='--', c='k')
+
+            # set up the axis such that the only the left most axis shows OD and ticks
+            # and only the rightmost axis shows the antibiotic and ticks
+            if vi%n_cols:
+                self.within_cycle_subplots[vi][0].set_yticklabels([])
+            else:
+                self.within_cycle_subplots[vi][0].set_ylabel('OD')
+
+            # switch off x tick labels in all but the bottom axis
+            if int(np.ceil(1.0*self.n_vials/n_cols))<n_rows:
+                self.within_cycle_subplots[vi][0].set_xticklabels([])
+            else:
+                self.within_cycle_subplots[vi][0].set_xlabel('time')
+
 
     def update_plot(self, dummy):
         '''
@@ -564,12 +600,13 @@ class morbidostat(object):
         '''
         if not (self.running and self.display_OD):
             return
-        
+        plt.ioff()
+        plt.figure(self.OD_fig_name)
         n_cycles_to_show = 5
         display_unit = 60
         first_plot_cycle = max(0,self.cycle_counter-n_cycles_to_show)
         last_plot_cycle = first_plot_cycle+n_cycles_to_show
-        #print "updating plot"
+        print "updating plot to cycle ", last_plot_cycle, self.cycle_counter
         max_OD = 0
         max_AB = 0
         for vi, vial  in enumerate(self.vials):
@@ -598,3 +635,26 @@ class morbidostat(object):
             self.subplots[vi][1].set_ylim([0,max_AB*1.2+0.01])
         plt.draw()
 
+    def update_within_cycle_plot(self, dummy):
+        '''
+        this function is called repeatedly and redraws the plot after adding new data
+        the axis are rescaled but kept identical in each subplot
+        '''
+        if not (self.running and self.display_OD):
+            return
+        plt.ioff()
+        plt.figure(self.within_cycle_fig_name)
+        display_unit = 60
+        mmax = self.OD_measurement_counter
+        max_OD = 0
+        for vi, vial  in enumerate(self.vials):
+            max_OD = max(max_OD, np.max(self.last_OD_measurements[:,vi]))
+            xdata = (self.last_OD_measurements[:mmax,-1]-self.last_OD_measurements[0,-1])/display_unit
+            ydata = self.last_OD_measurements[:mmax,vi]
+            self.within_plotted_line_objects[vi][0].set_data(xdata,ydata)
+        for vi, vial  in enumerate(self.vials):
+            self.within_cycle_subplots[vi][0].set_ylim([0,max_OD*1.2+0.01])
+            self.within_cycle_subplots[vi][0].set_xlim([0, self.cycle_dt/display_unit])
+        plt.draw()
+ 
+      
