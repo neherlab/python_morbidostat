@@ -120,7 +120,7 @@ class morbidostat(object):
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
-        self.second = 0.02
+        self.second = 0.1
 
         # set up the morbidostat
         self.morb = morb.morbidostat()
@@ -248,12 +248,14 @@ class morbidostat(object):
             if self.display_OD:
                 n_cols = 3
                 n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
-                plt.ion()
-                self.data_figure = plt.figure(self.OD_fig_name, figsize = (n_cols*3, min(12,n_rows*3)))
+                figsize = (n_cols*2+1, min(10,n_rows*2))
+                self.data_figure = plt.figure(self.OD_fig_name, figsize = figsize)
                 self.init_data_plot()
+                self.data_figure_thread = threading.Thread(target = self.cycle_data_figure)
                 if self.display_within_OD:
-                    self.within_cycle_figure = plt.figure(self.within_cycle_fig_name, figsize = (n_cols*3, min(12,n_rows*3)))
+                    self.within_cycle_figure = plt.figure(self.within_cycle_fig_name, figsize = figsize)
                     self.init_within_cycle_plot()
+                    #self.within_cycle_figure_thread = threading.Thread(target=self.cycle_within_data_figure)
                 plt.show()
 #                self.OD_animation = animation.FuncAnimation(self.data_figure, self.update_plot, 
 #                                                            init_func=self.init_data_plot,
@@ -265,6 +267,10 @@ class morbidostat(object):
             self.running = True
             self.stopped = False
             self.interrupted=False
+            if self.display_OD:
+                self.data_figure_thread.start()
+                #if self.display_within_OD:
+                #    self.within_cycle_figure_thread.start()
         else:
             print "experiment already running"
 
@@ -337,8 +343,8 @@ class morbidostat(object):
             self.morbidostat_cycle()
             self.save_data()
             self.cycle_counter+=1
-            if self.display_OD:
-                self.update_plot(0)
+            #if self.display_OD:
+            #    self.update_plot(0)
             remaining_time = self.cycle_dt-(time.time()-tmp_cycle_start)/self.second
             if remaining_time>0:
                 time.sleep(remaining_time*self.second)
@@ -350,6 +356,16 @@ class morbidostat(object):
                 break
         if self.cycle_counter==self.n_cycles:
             self.stop_experiment()
+
+    def cycle_data_figure(self):
+        while not self.stopped:
+            self.update_plot(0)
+            time.sleep(self.cycle_dt*self.second)
+
+    #def cycle_within_data_figure(self):
+    #    while not self.stopped:
+    #        self.update_within_cycle_plot(0)
+    #        time.sleep(2*self.OD_dt*self.second)
 
 
     def morbidostat_cycle(self):
@@ -386,8 +402,8 @@ class morbidostat(object):
             tmp_OD_measurement_start = time.time()
             self.measure_OD()
             self.OD_measurement_counter+=1
-            if self.display_within_OD:
-               self.update_within_cycle_plot(0)
+#            if self.display_within_OD:
+#               self.update_within_cycle_plot(0)
 
             remaining_time = self.OD_dt - (time.time()-tmp_OD_measurement_start)/self.second 
             if remaining_time>0:
@@ -528,7 +544,7 @@ class morbidostat(object):
         '''
         print "init figure"
         # there is a subplot for each vial which share axis. hence they are stacked
-        n_cols = 3 # supplots are arranged in rows of 3
+        n_cols = 3 # subplots are arranged in rows of 3
         n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
         plt.figure(self.OD_fig_name)
         plt.subplots_adjust(hspace = .001,wspace = .001)
@@ -567,7 +583,7 @@ class morbidostat(object):
         '''
         print "init within cycle plot figure"
         # there is a subplot for each vial which share axis. hence they are stacked
-        n_cols = 3 # supplots are arranged in rows of 3
+        n_cols = 3 # subplots are arranged in rows of 3
         n_rows = int(np.ceil(1.0*self.n_vials/n_cols))
         plt.figure(self.within_cycle_fig_name)
         plt.subplots_adjust(hspace = .001,wspace = .001)

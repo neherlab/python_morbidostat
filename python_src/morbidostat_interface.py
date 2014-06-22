@@ -1,6 +1,6 @@
 from morbidostat_experiment import *
 import Tkinter
-import threading
+import multiprocessing
 
 
 class set_up_dialog(Tkinter.Frame):
@@ -107,9 +107,9 @@ class vial_selection_dialog(Tkinter.Frame):
 
 
 class morbidostat_interface(Tkinter.Frame):
-    def __init__(self, master):
+    def __init__(self, master, morb):
         self.master = master        
-        self.morb = morbidostat()
+        self.morb = morb
         self.all_good=True
         self.update_status_thread = threading.Thread(target = self.update_status_strings)
         self.run_time_window()
@@ -223,13 +223,20 @@ class morbidostat_interface(Tkinter.Frame):
         self.remaining_time_val.configure(text  = self.remaining_time_str())
         self.remaining_cycle_time_val.configure(text  = self.remaining_cycle_time_str())
         self.morb.update_plot(0)
+        if self.morb.display_within_OD:
+            self.morb.update_within_cycle_plot(0)
+        self.morb.update_plot(0)
             #time.sleep(10)
         
 
 
 if __name__ == '__main__':
+    morb = morbidostat()
+    morb.display_OD=True
+    morb.display_within_OD = True
+
     root = Tkinter.Tk()
-    app=morbidostat_interface(root)
+    app=morbidostat_interface(root, morb)
     root.mainloop()
     root.destroy()
 
