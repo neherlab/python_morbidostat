@@ -1,6 +1,6 @@
 from morbidostat_experiment import *
 import Tkinter
-import multiprocessing
+import threading
 
 
 class set_up_dialog(Tkinter.Frame):
@@ -115,13 +115,14 @@ class morbidostat_interface(Tkinter.Frame):
         self.run_time_window()
 
     def call_set_up(self):
-        set_up_dialog_window = set_up_dialog(self.morb)
-        self.master.wait_window(set_up_dialog_window.top)
-    
+        if not morb.running:
+            set_up_dialog_window = set_up_dialog(self.morb)
+            self.master.wait_window(set_up_dialog_window.top)
+        else:
+            print "cannot update parameters while running"
 
     def quit(self):
         self.all_good=False
-        self.morb.update_plot(0)
         self.morb.stop_experiment()
         self.run_time_frame.quit()
 
@@ -217,27 +218,20 @@ class morbidostat_interface(Tkinter.Frame):
         #self.update_status_thread.start()
     
     def update_status_strings(self):
-#        while self.all_good:
         self.status_label_val.configure(text=self.status_str())
         self.elapsed_time_val.configure(text  = self.elapsed_time_str())
         self.remaining_time_val.configure(text  = self.remaining_time_str())
         self.remaining_cycle_time_val.configure(text  = self.remaining_cycle_time_str())
-        self.morb.update_plot(0)
-        if self.morb.display_within_OD:
-            self.morb.update_within_cycle_plot(0)
-        self.morb.update_plot(0)
-            #time.sleep(10)
-        
 
-
-if __name__ == '__main__':
-    morb = morbidostat()
-    morb.display_OD=True
-    morb.display_within_OD = True
-
+def run_GUI(morb):
     root = Tkinter.Tk()
     app=morbidostat_interface(root, morb)
     root.mainloop()
     root.destroy()
 
+if __name__ == '__main__':
+    morb = morbidostat()
+    gui_thread = threading.Thread(target = run_GUI, args = (morb,))
+    gui_thread.start()
+    
 
