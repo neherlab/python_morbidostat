@@ -118,7 +118,7 @@ class morbidostat(object):
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
-        self.second = 0.01
+        self.second = 0.1
 
         # set up the morbidostat
         self.morb = morb.morbidostat()
@@ -211,6 +211,7 @@ class morbidostat(object):
         self.temperature_fname = self.base_name+'temperature.txt'
         self.cycle_OD_fname = self.base_name+'cycle_OD_estimate.txt'
         self.growth_rate_fname = self.base_name+'growth_rate_estimates.txt'
+        self.last_cycle_fname = self.base_name+'OD/'+'current_cycle.dat'
 
     def experiment_time(self):
         return (time.time()-self.experiment_start)/self.second
@@ -236,6 +237,17 @@ class morbidostat(object):
         np.savetxt(self.growth_rate_fname, self.growth_rate_estimate,fmt='%2.6f')
         np.savetxt(self.cycle_OD_fname, self.final_OD_estimate,fmt='%2.3f')
         os.remove(lockfname)
+
+    def save_within_cycle_data(self):
+        '''
+        save only OD of the current cycle
+        '''
+        lockfname = self.base_name+'/.lock'
+        with open(lockfname, 'w') as lockfile:
+            lockfile.write(time.strftime('%x %X'))
+        np.savetxt(self.last_cycle_fname, self.last_OD_measurements[:self.OD_measurement_counter,:],fmt='%2.3f')
+        os.remove(lockfname)
+        
 
     def start_experiment(self):
         '''
@@ -363,7 +375,7 @@ class morbidostat(object):
             tmp_OD_measurement_start = time.time()
             self.measure_OD()
             self.OD_measurement_counter+=1
-
+            self.save_within_cycle_data()
             remaining_time = self.OD_dt - (time.time()-tmp_OD_measurement_start)/self.second 
             if remaining_time>0:
                 time.sleep(remaining_time*self.second)
@@ -470,7 +482,7 @@ class morbidostat(object):
             else:
                 self.vial_drug_concentration[self.cycle_counter+1,vi] = \
                     self.vial_drug_concentration[self.cycle_counter,vi]
-            self.vial_drug_concentration[self.cycle_counter,-1]=self.experiment_time()
+            self.vial_drug_concentration[self.cycle_counter+1,-1]=self.experiment_time()
 
                 
         print 'Cycle:',self.cycle_counter, self.experiment_time()

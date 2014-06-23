@@ -35,8 +35,8 @@ class morbidostat_monitor(object):
             time.sleep(self.scan_dt)
 
     def update_all(self):
-        self.load_cycle_data()
         self.load_OD_data()
+        self.load_cycle_data()
         wx.CallAfter(self.update_plot)
        
     def read_parameters_file(self):
@@ -52,17 +52,28 @@ class morbidostat_monitor(object):
     
     def load_OD_data(self):
         if not os.path.exists(self.lock_file):
+            current_cycle_fname = self.OD_dir+'current_cycle.dat'
+            if os.path.exists(current_cycle_fname):
+                current_cycle = np.loadtxt(current_cycle_fname)
+                ncurr = current_cycle.shape[0]
+            else:
+                ncurr = 0
             OD_file_list = glob.glob(self.OD_dir+'OD_cycle*dat')
-            if len(OD_file_list):
-                tmp = np.loadtxt(OD_file_list[0])
-                self.ODs_per_cycle, ncols = tmp.shape
-                self.OD = np.zeros((len(OD_file_list)*self.ODs_per_cycle, ncols))
+            if len(OD_file_list) or ncurr:
+                if len(OD_file_list):
+                    tmp = np.loadtxt(OD_file_list[0])
+                    self.ODs_per_cycle, ncols = tmp.shape
+                else:
+                    self.ODs_per_cycle, ncols = current_cycle.shape
+                self.OD = np.zeros((len(OD_file_list)*self.ODs_per_cycle+ncurr, ncols))
                 for fname in OD_file_list:
                     cycle= int(fname.split('_')[-1][:-4])
                     if cycle<len(OD_file_list):
                         self.OD[self.ODs_per_cycle*cycle:self.ODs_per_cycle*(cycle+1),:]=np.loadtxt(fname)
                     else:
                         print "Cycle out of range"
+                if ncurr:
+                    self.OD[-ncurr:,:] = current_cycle
             else:
                 print "no OD data"
         else:
@@ -71,10 +82,17 @@ class morbidostat_monitor(object):
 
     def load_cycle_data(self):
         if not os.path.exists(self.lock_file):
-            self.drug_concentration = np.loadtxt(self.data_dir+'vials_drug_concentrations.txt')
-            self.temperature= np.loadtxt(self.data_dir+'temperature.txt')
-            self.growth_rate_estimate = np.loadtxt(self.data_dir+'growth_rate_estimates.txt')
-            self.OD_estimate = np.loadtxt(self.data_dir+'cycle_OD_estimate.txt')
+            try:
+                self.drug_concentration = np.loadtxt(self.data_dir+'vials_drug_concentrations.txt')
+                self.temperature= np.loadtxt(self.data_dir+'temperature.txt')
+                self.growth_rate_estimate = np.loadtxt(self.data_dir+'growth_rate_estimates.txt')
+                self.OD_estimate = np.loadtxt(self.data_dir+'cycle_OD_estimate.txt')
+            except:
+                print "Cannot read cycle data"
+                self.drug_concentration = np.zeros((2,len(self.vials)))
+                self.temperature = np.zeros((2,3))
+                self.growth_rate_estimate = np.zeros((2,2))
+                self.OD_estimate = np.zeros((2,2))
         else:
             print "data locked"
 
@@ -155,18 +173,18 @@ class morbidostat_monitor(object):
             xmin = max(0,xmax-self.data_range)
         for vi, vial  in enumerate(self.vials):
             self.subplots[vi][0].set_ylim([0,max_OD*1.2+0.01])
-            self.subplots[vi][0].set_xlim([xmin/self.time_unit[0], xmax/self.time_unit[0]])
+            self.subplots[vi][0].set_xlim([xmin/self.time_unit[0], xmax/self.time_unit[0]+1])
             self.subplots[vi][1].set_ylim([0,max_AB*1.2+0.01])
 
         # temperature plot
         zero_indices = np.where(self.temperature[:,-1]==0)[0]
         if len(zero_indices)>1:
-            max_index=zero_indices[1]-1
+            max_index=max(1,zero_indices[1]-1)
         else:
             max_index = self.temperature.shape[0]
         self.temperature_curves[0].set_data(self.temperature[:max_index,-1]/self.time_unit[0], self.temperature[:max_index,0])
         self.temperature_curves[1].set_data(self.temperature[:max_index,-1]/self.time_unit[0], self.temperature[:max_index,1])
-        plt.xlim(xmin/self.time_unit[0], self.temperature[:max_index,-1].max()/self.time_unit[0])
+        plt.xlim(xmin/self.time_unit[0], max(1,self.temperature[:max_index,-1].max()/self.time_unit[0]))
         plt.ylim(self.temperature[:max_index,:2].flatten().min()-2, self.temperature[:max_index,:2].flatten().max()+2)
         plt.draw()
 
