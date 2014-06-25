@@ -15,7 +15,8 @@ suction_pump = 3
 # dictionary mapping pumps to pins
 pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
          'drugB': [30,31, 32, 33,34,35, 23, 36,37, 24,25, 26,27,28,29], 
-         'medium': [53,52,51,50,49,48, 45 , 47,46, 44,43,42,41,40,39]}
+         'medium': [53,52,51,50,49,48, 45 , 47,46, 44,43,42,41,40,39],
+         'waste': suction_pump}
 
 
 ############
@@ -23,18 +24,29 @@ pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
 ############
 pump_calibration_file_base = 'pump_calibration'
 OD_calibration_file_name = 'OD_calibration.dat'
-
+pump_calibration_params = {}
 for pump_type in pumps:
     fname = pump_calibration_file_base+'_'+pump_type+'.dat'
-    if os.path.isfile(fname):
-        try:
-            pump_calibration_params = np.loadtxt(fname)
-        except:
-            print "error opening pump calibration, all pump calibration parameters set to 0"
-            pump_calibration_params = np.zeros(15)
+    if pump_type!='waste':
+        if os.path.isfile(fname):
+            try:
+                pump_calibration_params[pump_type] = np.loadtxt(fname)
+            except:
+                print "error opening pump calibration, all pump calibration parameters set to 2.4ml/min"
+            pump_calibration_params[pump_type] = 0.04*np.ones(15)
+        else:
+            print "no pump calibration file "+fname+", all pump calibration parameters set to 2.4 ml/min"
+            pump_calibration_params[pump_type] = 0.04*np.ones(15)
     else:
-        print "no pump calibration file "+fname+", all pump calibration parameters set to 0"
-        pump_calibration_params = np.zeros(15)
+        if os.path.isfile(fname):
+            try:
+                pump_calibration_params[pump_type] = np.array([np.loadtxt(fname)])
+            except:
+                print "error opening pump calibration, all pump calibration parameters set to 2.4ml/min"
+                pump_calibration_params[pump_type] = np.array([0.04])
+        else:
+            print "no pump calibration file "+fname+", all pump calibration parameters set to 2.4 ml/min"
+            pump_calibration_params[pump_type] = np.array([0.04])
 
 if os.path.isfile(OD_calibration_file_name):
     try:
@@ -92,6 +104,19 @@ class morbidostat:
                     try_next=False
                 self.morbidostat_OK = False
         return port_number
+
+    def volume_to_time(pump_type, pump, volume):
+        if pump_type in pump_calibration_params:
+            if pump_number<len(pump_calibration_params[pump_type]):
+                return volume/pump_calibration_params[pump_type][pump_number]
+            else:
+                print "invalid pump number", pump_number, 'only ',len(pump_calibration_params[pump_type]), \
+                    'calibration parameters'
+                return 0
+        else:
+            print "invalid pump_type", pump_type, 'not in', pump_calibration_params.keys()
+            return 0
+
 
     def wait_until_mixed(self):
         '''
@@ -199,7 +224,7 @@ class morbidostat:
         pump_number: number of the pump to be switched on (0-15)
         volume: volume to be added in ml
         '''
-        run_time = self.volume_to_time(volume, pump_type, pump_number)
+        run_time = self.volume_to_time(pump_type, pump_number, volume)
         if run_time>0:
             # run the pump for calculated time
             self.run_pump(pump_type, pump_number, run_time)
@@ -210,7 +235,7 @@ class morbidostat:
         params:
         volume: volume to be removed in ml
         '''
-        run_time = self.volume_to_time(volume, 'waste pump', 0)
+        run_time = self.volume_to_time('waste', 0, volume)
         if run_time>0:
             # run the pump for calculated time
             self.run_waste_pump(run_time)

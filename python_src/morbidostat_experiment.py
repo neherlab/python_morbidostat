@@ -353,6 +353,7 @@ class morbidostat(object):
             print("morbidostat_cycle: OD measurement timed out")
 
         self.estimate_growth_rates()
+        self.added_volumes = []
         if  self.experiment_type==MORBIDOSTAT_EXPERIMENT:
             self.feedback_on_OD()
         elif self.experiment_type ==FIXED_OD_EXPERIMENT:
@@ -362,6 +363,7 @@ class morbidostat(object):
         else:
             print "unknown experiment type:", self.experiment_type
         self.morb.wait_until_mixed()
+        self.morb.remove_waste(max(self.added_volumes) + self.extra_suction)
         
         self.temperatures[self.cycle_counter,-1] = t
         self.temperatures[self.cycle_counter,:2] = self.morb.temperatures
@@ -468,6 +470,7 @@ class morbidostat(object):
 
             
             if tmp_decision[1]>0:
+                self.added_volumes.append(dilution_volume)
                 self.morb.inject_volume(tmp_decision[0], vial, self.dilution_volume)
                 self.vial_drug_concentration[self.cycle_counter+1,vi] = \
                     self.vial_drug_concentration[self.cycle_counter,vi]*self.dilution_factor
@@ -504,6 +507,7 @@ class morbidostat(object):
                 volume_to_add=0
             else:
                 volume_to_add = min(5,(self.final_OD_estimate[self.cycle_counter,vi]-self.target_OD)*self.culture_volume/self.target_OD)
+                self.added_volumes.append(volume_to_add)
                 self.morb.inject_volume(dilute_w_medium[0], vial, volume_to_add)
             print "dilute vial ",vial,'with', np.round(volume_to_add,3), 'previous OD', np.round(self.final_OD_estimate[self.cycle_counter,vi],3)
             self.decisions[self.cycle_counter,vi] = volume_to_add

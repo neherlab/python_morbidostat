@@ -8,7 +8,7 @@ debug = False
 # dictionary mapping pumps to pins
 pumps = {'medium': range(7,7+15), 
          'drugA': range(22,22+15),
-         'drugB': range(38,38+15)}
+         'drugB': range(38,38+15), 'waste':3}
 
 
 class morbidostat:
@@ -32,6 +32,10 @@ class morbidostat:
         function not needed in a simulator, included for compatibility
         '''
         return
+
+    def volume_to_time(pump_type, pump, volume):
+        return 0
+
 
     def measure_temperature(self):
         pass
