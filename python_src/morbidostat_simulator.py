@@ -92,6 +92,8 @@ class morbidostat:
 
     def switch_light(self, state):
         pass
+    def remove_waste(self,volume):
+        pass
 
     def inject_volume(self, pump_type='medium', pump_number=0, volume=0.1):
         ''' 
