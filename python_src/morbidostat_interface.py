@@ -106,6 +106,38 @@ class vial_selection_dialog(Tkinter.Frame):
         done_button.grid(row=5,column=1)
 
 
+class experiment_selector(Tkinter.Frame):
+    def __init__(self, morb):
+        self.top = Tkinter.Toplevel()
+        self.top.title("select experiment type")
+        self.morb = morb
+
+        self.experiment_types = [("Morbidostat", MORBIDOSTAT_EXPERIMENT),
+                            ("Fixed OD", FIXED_OD_EXPERIMENT),
+                            ("Growth curve", GROWTH_RATE_EXPERIMENT)]
+        self.v = Tkinter.IntVar()
+        self.v.set(0) # initialize
+
+        self.selector_window()
+
+    
+    def selector_window(self):
+        self.selector_frame = Tkinter.Frame(self.top)
+        self.selector_frame.pack()
+        for mode, text in enumerate(self.experiment_types):
+            b = Tkinter.Radiobutton(self.selector_frame, text=text[0],variable=self.v, value = mode)
+            b.pack(anchor=Tkinter.W)
+
+        done_button = Tkinter.Button(self.selector_frame, text="Done", command = self.read_type_and_set)        
+        done_button.pack(anchor=Tkinter.E)
+
+    def read_type_and_set(self):
+        mode_index = self.v.get()
+        print mode_index, self.experiment_types[mode_index]
+        self.morb.experiment_type = self.experiment_types[mode_index][1]
+        self.top.destroy()
+        
+
 class morbidostat_interface(Tkinter.Frame):
     def __init__(self, master, morb):
         self.master = master        
@@ -120,6 +152,14 @@ class morbidostat_interface(Tkinter.Frame):
             self.master.wait_window(set_up_dialog_window.top)
         else:
             print "cannot update parameters while running"
+
+    def open_experiment_type_selector(self):
+        if not morb.running:
+            experiment_selector_dialog = experiment_selector(self.morb)
+            self.master.wait_window(experiment_selector_dialog.top)
+        else:
+            print "cannot update parameters while running"
+
 
     def quit(self):
         self.all_good=False
@@ -178,10 +218,13 @@ class morbidostat_interface(Tkinter.Frame):
         label_font= 'Helvetica'
         var_font = 'Courier'
         fsize = 16
+        self.experiment_type_label = Tkinter.Label(self.run_time_frame, text='Experiment type: ', fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
         self.status_label = Tkinter.Label(self.run_time_frame, text='Status: ', fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
         self.elapsed_time = Tkinter.Label(self.run_time_frame, text  = 'Elapsed time:', fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
         self.remaining_time = Tkinter.Label(self.run_time_frame, text  = 'Remaining time:', fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
         self.remaining_cycle_time = Tkinter.Label(self.run_time_frame, text  = 'Remaining in cycle: ', fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
+
+        self.experiment_type_label_val = Tkinter.Label(self.run_time_frame, text=self.morb.experiment_type, fg="black", anchor=Tkinter.W, height = 2, width= 10, font=(var_font, fsize))
         self.status_label_val = Tkinter.Label(self.run_time_frame, text=self.status_str(), fg="black", anchor=Tkinter.W, height = 2, width= 10, font=(var_font, fsize))
         self.elapsed_time_val = Tkinter.Label(self.run_time_frame, text  = self.elapsed_time_str(), fg="black", anchor=Tkinter.W, height = 2, width= 10, font=(var_font, fsize))
         self.remaining_time_val = Tkinter.Label(self.run_time_frame, text  = self.remaining_time_str(), fg="black", anchor=Tkinter.W, height = 2, width= 10, font=(var_font, fsize))
@@ -200,24 +243,29 @@ class morbidostat_interface(Tkinter.Frame):
         self.quit_button = Tkinter.Button(self.run_time_frame, text="QUIT", fg="black", 
                                           command=self.quit, height = 2)
 
-        self.status_label.grid(row=0, column=0, columnspan=2)
-        self.elapsed_time.grid(row=1, column=0, columnspan=2)
-        self.remaining_time.grid(row=2, column=0, columnspan=2)
-        self.remaining_cycle_time.grid(row=3, column=0, columnspan=2)
-        self.status_label_val.grid(row=0, column=2, columnspan=3)
-        self.elapsed_time_val.grid(row=1, column=2, columnspan=3)
-        self.remaining_time_val.grid(row=2, column=2, columnspan=3)
-        self.remaining_cycle_time_val.grid(row=3, column=2, columnspan=3)
-        self.set_up_button.grid(row= 5, column = 0)
-        self.refresh_button.grid(row= 5, column = 1)
-        self.start_button.grid(row= 5, column = 2)
-        self.interrupt_button.grid(row= 5, column = 3)
-        self.resume_button.grid(row= 5, column = 4)
-        self.quit_button.grid(row= 5, column = 5)
+        self.experiment_type_label.grid(row=0, column=0, columnspan=2)
+        self.status_label.grid(row=1, column=0, columnspan=2)
+        self.elapsed_time.grid(row=2, column=0, columnspan=2)
+        self.remaining_time.grid(row=3, column=0, columnspan=2)
+        self.remaining_cycle_time.grid(row=4, column=0, columnspan=2)
 
-        #self.update_status_thread.start()
+        self.experiment_type_label_val.grid(row=0, column=2, columnspan=3)
+        self.status_label_val.grid(row=1, column=2, columnspan=3)
+        self.elapsed_time_val.grid(row=2, column=2, columnspan=3)
+        self.remaining_time_val.grid(row=3, column=2, columnspan=3)
+        self.remaining_cycle_time_val.grid(row=4, column=2, columnspan=3)
+        self.set_up_button.grid(row= 6, column = 0)
+        self.refresh_button.grid(row= 6, column = 1)
+        self.start_button.grid(row= 6, column = 2)
+        self.interrupt_button.grid(row= 6, column = 3)
+        self.resume_button.grid(row= 6, column = 4)
+        self.quit_button.grid(row= 6, column = 5)
+
+        self.open_experiment_type_selector()
+        self.update_status_strings()
     
     def update_status_strings(self):
+        self.experiment_type_label_val.configure(text = self.morb.experiment_type)
         self.status_label_val.configure(text=self.status_str())
         self.elapsed_time_val.configure(text  = self.elapsed_time_str())
         self.remaining_time_val.configure(text  = self.remaining_time_str())
