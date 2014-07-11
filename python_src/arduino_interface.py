@@ -18,6 +18,9 @@ pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
          'medium': [53,52,51,50,49,48, 45 , 47,46, 44,43,42,41,40,39]}
 
 
+vials_to_bin_assignment = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]
+
+
 ############
 # load calibration parameters
 ############
@@ -127,7 +130,7 @@ class morbidostat:
 
     def vial_to_pin(self, vial):
         assert vial<15, "maximal vial number is 15, got "+str(vial)
-        return vial
+        return vial_to_pin_assignment[vial]
 
     def voltage_to_OD(self,vi, mean_val, std_val):
         return voltage_to_OD_params[vi,0]*mean_val-voltage_to_OD_params[vi,1], \

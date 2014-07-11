@@ -44,8 +44,10 @@ def calibrate_OD(vials = None):
         voltages.append(np.zeros(len(vials)))
         for vi,vial in enumerate(vials):
             OKstr = raw_input("Place OD standard in receptible "+str(vial+1)+", press enter when done")
+            time.sleep(2.0)
             voltages[-1][vi] = calibration_morb.measure_voltage(calibration_morb.vial_to_pin(vial), 
                                                                 switch_light_off=True)
+            print vial, "measurement ", voltages[-1][vi]
 
     if len(ODs)>1:
         print("Collected "+str(len(ODs))+" OD voltage pairs, calculating voltage -> OD conversion")
@@ -118,7 +120,7 @@ class morbidostat(object):
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
-        self.second = 0.1
+        self.second = 0.02
 
         # set up the morbidostat
         self.morb = morb.morbidostat()
@@ -155,8 +157,7 @@ class morbidostat(object):
         self.drugA_concentration = drugA_concentration
         self.drugB_concentration = drugB_concentration
         # data acqusition specifics
-        self.n_reps=1
-        self.rep_dt = 0.001
+        self.n_reps=2
         self.buffer_time = 10
         # counters
         self.OD_measurement_counter = 0
@@ -194,10 +195,9 @@ class morbidostat(object):
         
         # file names
         tmp_time = time.localtime()
-        self.base_name = '../data/'+"".join(map(str, [tmp_time.tm_year, 
-                                           tmp_time.tm_mon, 
-                                           tmp_time.tm_mday])
-                                 ) + '_'.join(['',self.experiment_name,self.bug, self.drugA,self.drugB, self.experiment_type])+'/'
+        self.base_name = '../data/'+"".join([format(v,'02d') for v in
+                                             [tmp_time.tm_year, tmp_time.tm_mon, tmp_time.tm_mday]])\
+                                  + '_'.join(['',self.experiment_name,self.bug, self.drugA,self.drugB, self.experiment_type])+'/'
         if os.path.exists(self.base_name):
             print self.base_name+"directory already exists"
         else:
@@ -343,7 +343,8 @@ class morbidostat(object):
 
     def morbidostat_cycle(self):
         t = self.experiment_time()
-        self.morb.measure_temperature()
+        self.morb.measure_temperature(switch_light_off=True)
+        time.sleep(2.0*self.second)  # delay to allow for temperature conversion
         self.OD_measurement_counter=0
         self.OD_thread = threading.Thread(target = self.measure_OD_for_cycle)
         # start thread and wait for it to finish
@@ -393,8 +394,12 @@ class morbidostat(object):
         if debug:
             print "OD",
         self.last_OD_measurements[self.OD_measurement_counter, :] = 0
+        self.morb.switch_light(True) # switch light on
+        time.sleep(1.0*self.second)  # sleep for one second to allow for heating of LEDs
+
+        index_vial_pairs = zip(range(len(self.vials)), self.vials)
         for rep in xrange(self.n_reps):
-            for vi,vial in enumerate(self.vials):
+            for vi,vial in index_vial_pairs[::(1-2*(rep%2))]:
                 self.last_OD_measurements[self.OD_measurement_counter, vi] += self.morb.measure_OD(vial, 1, 0, False)
                 if debug:
                      print np.round(self.last_OD_measurements[self.OD_measurement_counter, vi],4),

@@ -33,7 +33,7 @@ class morbidostat:
         '''
         return
 
-    def measure_temperature(self):
+    def measure_temperature(self,switch_light_off=True):
         pass
 
     def connect(self):
