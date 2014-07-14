@@ -95,21 +95,40 @@ class set_up_dialog(Tkinter.Frame):
         read the user input and assign to morbidostat instance
         this is called by the "Done" button, hence destroy the window
         '''
-        # scheduling variables all integers interpreted as seconds
-        for ttype, var_name in self.time_variable_names:
-            self.morb.__setattr__(ttype, int(self.variables[ttype].get()))
-        
-        # annotiations and names, interpret as strings
-        for ttype, var_name in self.string_variable_names:
-            self.morb.__setattr__(ttype, self.variables[ttype].get())
+        if not self.morb.running:
+            # scheduling variables all integers interpreted as seconds
+            for ttype, var_name in self.time_variable_names:
+                self.morb.__setattr__(ttype, int(self.variables[ttype].get()))
 
-        # concentrations and feed back variables, interpret as float
-        for ttype, var_name in self.concentration_variable_names:
-            self.morb.__setattr__(ttype, float(self.variables[ttype].get()))
-            
-        # set active vials -> make a list of checked buttons
-        self.morb.vials = [vi for vi in range(15) if 
-                           self.vial_selector.vial_selector_variables[vi].get()]
+            # annotiations and names, interpret as strings
+            for ttype, var_name in self.string_variable_names:
+                self.morb.__setattr__(ttype, self.variables[ttype].get())
+
+            # concentrations and feed back variables, interpret as float
+            for ttype, var_name in self.concentration_variable_names:
+                self.morb.__setattr__(ttype, float(self.variables[ttype].get()))
+
+            # set active vials -> make a list of checked buttons
+            self.morb.vials = [vi for vi in range(15) if 
+                               self.vial_selector.vial_selector_variables[vi].get()]
+        elif self.morb.interrupted:
+            # update some parameters:
+            print "update parameters at time ", self.morb.experiment_time()
+            new_experiment_length  = int(self.variables['experiment_duration'].get())
+            if new_experiment_length>self.morb.experiment_duration:
+                cycles_to_add = (new_experiment_length-self.morb.experiment_duration)//self.morb.cycle_dt
+                if cycles_to_add>0:
+                    self.morb.experiment_duration = new_experiment_length
+                    print "added", cycles_to_add, 'cycles. New experiment duration', self.morb.experiment_duration
+                    self.morb.add_cycles_to_data_arrays(cycles_to_add)
+            new_drug_conc = (float(self.variables['drugA_concentration'].get()),
+                             float(self.variables['drugB_concentration'].get()))
+            self.morb.change_drug_concentrations(new_drug_conc[0], new_drug_conc[1])
+            self.morb.target_OD = float(self.variables['target_OD'].get())
+            self.morb.dilution_factor = float(self.variables['dilution_factor'].get())
+            self.morb.dilution_threshold = float(self.variables['dilution_threshold'].get())
+            self.morb.calculate_derived_values()
+
         self.top.destroy()
         
 
@@ -218,7 +237,7 @@ class morbidostat_interface(Tkinter.Frame):
         '''
         called upon parameters button press. opens dialog 
         '''
-        if not morb.running:
+        if morb.running==False or morb.interrupted:
             set_up_dialog_window = set_up_dialog(self.morb)
             self.master.wait_window(set_up_dialog_window.top)
         else:

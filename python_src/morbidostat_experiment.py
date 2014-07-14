@@ -121,7 +121,7 @@ class morbidostat(object):
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
-        self.second = 0.02
+        self.second = 1.0
 
         # set up the morbidostat
         self.morb = morb.morbidostat()
@@ -135,8 +135,6 @@ class morbidostat(object):
         self.OD_dt = OD_dt
         self.cycle_dt = cycle_dt
         self.experiment_duration = experiment_duration
-        self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time)//self.OD_dt
-        self.n_cycles = self.experiment_duration//self.cycle_dt
 
         if (np.max(vials)<15):
             self.vials = copy.copy(vials)
@@ -146,12 +144,10 @@ class morbidostat(object):
             self.vials = []
 
         self.target_OD = target_OD
-        self.culture_volume = 10
+        self.culture_volume = 10 # target volume in milliliters
         self.dilution_factor = 0.9
-        self.dilution_volume = self.culture_volume*(1.0-self.dilution_factor)
         self.dilution_threshold = 0.03
         self.extra_suction  = 5 # extra volume that is being sucked out of the vials 
-        self.target_growth_rate = -np.log(self.dilution_factor)/self.cycle_dt
         self.drugA = drugA
         self.drugB = drugB
         self.experiment_name = ''
@@ -164,15 +160,27 @@ class morbidostat(object):
         # counters
         self.OD_measurement_counter = 0
         self.cycle_counter = 0
-
         #feedback parameters
-        self.max_growth_fraction = 0.3  # increase antibiotics with 30% OD increase per cycle
-        self.max_OD_deviation = 0.2 # increase antibiotic if 20% above target OD
-        self.AB_switch_conc = 0.3 # use high concentration if culture conc is 30% of drug A
+        self.max_growth_fraction = 0.1  # increase antibiotics with 20% OD increase per cycle
+        self.max_OD_deviation = 0.2     # increase antibiotic if 20% above target OD
+        self.AB_switch_conc = 0.3       # use high concentration if culture conc is 30% of drug A
+        self.rescue_threshold = -0.1    # dilute culture with medium only if growth rate is 10\% below target.
         # diagnostic variables
-        self.stopped=True
-        self.interrupted =False
+        self.stopped = True
+        self.interrupted = False
         self.running = False
+        self.calculate_derived_values()
+
+
+    def calculate_derived_values(self):
+        '''
+        values calculated after other parameters are set. 
+        '''
+        self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time-self.buffer_time)//self.OD_dt
+        self.n_cycles = self.experiment_duration//self.cycle_dt
+        self.dilution_volume = self.culture_volume*(1.0/np.max((0.5, self.dilution_factor))-1.0)
+        self.target_growth_rate = -np.log(self.dilution_factor)/self.cycle_dt
+
 
     def set_up(self):
         '''
@@ -180,8 +188,7 @@ class morbidostat(object):
         note that this only works for fixed experiment length. 
         the duration of the experiment cannot be changed after this function is called
         '''
-        self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time-self.buffer_time)//self.OD_dt
-        self.n_cycles = self.experiment_duration//self.cycle_dt
+        self.calculate_derived_values()
 
         self.OD = np.zeros((self.n_cycles, self.ODs_per_cycle, self.n_vials+1), dtype = float)
         self.temperatures = np.zeros((self.n_cycles, 3))
@@ -219,13 +226,44 @@ class morbidostat(object):
         self.growth_rate_fname = self.base_name+'growth_rate_estimates.txt'
         self.last_cycle_fname = self.base_name+'OD/'+'current_cycle.dat'
 
+    def add_cycles_to_data_arrays(self, cycles_to_add):
+        '''
+        provides the possibility to extend a running experiment by providing more space
+        in the arrays used to store the data. 
+        '''
+        self.OD = np.concatenate((self.OD, np.zeros((cycles_to_add, self.ODs_per_cycle, self.n_vials+1), dtype = float)))
+        self.temperatures = np.concatenate((self.temperatures, np.zeros((cycles_to_add, 3), dtype = float)))
+        self.decisions = np.concatenate((self.decisions, np.zeros((cycles_to_add, self.n_vials+1), dtype = float)))
+        self.vial_drug_concentration = np.concatenate((self.vial_drug_concentration, np.zeros((cycles_to_add+1, self.n_vials+1), dtype = float)))
+        self.vial_drug_concentration[-cycles_to_add:,-1]=np.arange(self.vial_drug_concentration.shape[0]-cycles_to_add, 
+                                                     self.vial_drug_concentration.shape[0])*self.cycle_dt
+
+        self.growth_rate_estimate = np.concatenate((self.growth_rate_estimate, np.zeros((cycles_to_add,self.n_vials+1))))
+        self.final_OD_estimate = np.concatenate((self.final_OD_estimate, np.zeros((cycles_to_add,self.n_vials+1))))
+        
+
     def experiment_time(self):
         return (time.time()-self.experiment_start)/self.second
 
     def write_parameters_file(self, ):
         with open(self.base_name+'/parameters.dat', 'w') as params_file:
             params_file.write('vials\t'+'\t'.join(map(str,self.vials))+'\n')
-    
+            params_file.write('Experiment:\t'+self.experiment_name+' type: '+self.experiment_type+'\n')
+            params_file.write('Strain:\t'+self.bug+'\n')
+            params_file.write('Drugs:\t'+self.drugA+'\t'+self.drugB+'\n')
+            params_file.write('cycle duration:\t'+str(self.cycle_dt)+'\n')
+            params_file.write('measurments/cycle:\t'+str(self.ODs_per_cycle)+'\n')
+            params_file.write('experiment start:\t'+str(self.experiment_start))
+
+    def change_drug_concentrations(self, Aconc, Bconc):
+        '''
+        change drug concentrations during run time
+        '''
+        self.historical_drug_A_concentration.append((self.experiment_time(), self.drugA_concentration))
+        self.drugA_concentration = Aconc
+        self.historical_drug_B_concentration.append((self.experiment_time(), self.drugB_concentration))
+        self.drugB_concentration = Bconc
+
 
     def save_data(self):
         '''
@@ -455,7 +493,38 @@ class morbidostat(object):
             
         else:
             print("morbidostat_experiment: no data")
-            
+
+
+    def standard_feedback(self, vial):
+        '''
+        threshold on excess growth rate
+        '''
+        vi = self.vials.index(vial)
+        # calculate the expected OD increase per cycle
+        expected_growth = (self.growth_rate_estimate[self.cycle_counter,vi]-self.target_growth_rate)*self.cycle_dt\
+                            *self.final_OD_estimate[self.cycle_counter,vi]
+        # calculate the amount by which OD exceeds the target
+        excess_OD = (self.final_OD_estimate[self.cycle_counter,vi]-self.target_OD)
+        # if neither OD nor growth are above thresholds, dilute with happy fluid
+        if expected_growth<self.target_OD*self.max_growth_fraction and excess_OD<self.max_OD_deviation*self.target_OD:
+            # if drug conc in vial is low or expected growth too negative, dilute with medium 
+            if self.vial_drug_concentration[self.cycle_counter,vi]<self.drugA_concentration or\
+                    expected_growth<self.target_OD*self.rescue_threshold:
+                tmp_decision, vol_mod = dilute_w_medium, max(0,
+                      min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
+            else: # if drug conc already high, dilute with lower concetrated drug
+                tmp_decision, vol_mod = dilute_w_drugA,max(0, 
+                      min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
+        else: # if feedback with drugs is required, dilute with one or the other drug depending on preex conc
+            if self.vial_drug_concentration[self.cycle_counter, vi]<self.AB_switch_conc*self.drugA_concentration:
+                tmp_decision, vol_mod = dilute_w_drugA, max(0,
+                      min(2, 1+(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
+            else:
+                tmp_decision, vol_mod = dilute_w_drugB, max(0,
+                      min(2,1+(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
+ 
+        return tmp_decision
+
     def feedback_on_OD(self):
         '''
         THis function is called every dilute_dt
@@ -471,27 +540,11 @@ class morbidostat(object):
                 tmp_decision = do_nothing
                 vol_mod=0
             else:
-                expected_growth = (self.growth_rate_estimate[self.cycle_counter,vi]-self.target_growth_rate)*self.cycle_dt\
-                                    *self.final_OD_estimate[self.cycle_counter,vi]
-                excess_OD = (self.final_OD_estimate[self.cycle_counter,vi]-self.target_OD)
-                if expected_growth<self.target_OD*self.max_growth_fraction and excess_OD<self.max_OD_deviation*self.target_OD:
-                    if self.vial_drug_concentration[self.cycle_counter,vi]<self.drugA_concentration:
-                        tmp_decision, vol_mod = dilute_w_medium, max(0,
-                              min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
-                    else:
-                        tmp_decision, vol_mod = dilute_w_drugA,max(0, 
-                              min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
-                else:
-                    if self.vial_drug_concentration[self.cycle_counter, vi]<self.AB_switch_conc*self.drugA_concentration:
-                        tmp_decision, vol_mod = dilute_w_drugA, max(0,
-                              min(2, 1+(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
-                    else:
-                        tmp_decision, vol_mod = dilute_w_drugB, max(0,
-                              min(2,1+(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
+                tmp_decision = self.standard_feedback(vial)
 
             
             if tmp_decision[1]>0:
-                self.added_volumes[vi]=dilution_volume
+                self.added_volumes[vi]=self.dilution_volume
                 self.morb.inject_volume(tmp_decision[0], vial, self.dilution_volume)
                 self.vial_drug_concentration[self.cycle_counter+1,vi] = \
                     self.vial_drug_concentration[self.cycle_counter,vi]*self.dilution_factor

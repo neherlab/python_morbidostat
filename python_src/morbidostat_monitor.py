@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import sys,os, glob, threading, time
-import wx
+#import wx
 
 class morbidostat_monitor(object):
     def __init__(self,dir_name):
@@ -37,7 +37,8 @@ class morbidostat_monitor(object):
     def update_all(self):
         self.load_OD_data()
         self.load_cycle_data()
-        wx.CallAfter(self.update_plot)
+        self.update_plot()
+        #wx.CallAfter(self.update_plot)
        
     def read_parameters_file(self):
         try:
