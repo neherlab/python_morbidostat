@@ -34,6 +34,8 @@ class set_up_dialog(Tkinter.Frame):
         self.concentration_variable_names = [('target_OD', 'Target OD'),
                                     ('dilution_threshold', 'Dilution Threshold'),
                                     ('dilution_factor', 'Dilution Factor'),
+                                    ('max_growth_fraction', 'Max. exc. growth (rel to target)'),
+                                    ('AB_switch_conc', 'switch A to B'),
                                     ('drugA_concentration', 'Drug A concentration'),
                                     ('drugB_concentration', 'Drug B concentration')]
 
@@ -127,6 +129,8 @@ class set_up_dialog(Tkinter.Frame):
             self.morb.target_OD = float(self.variables['target_OD'].get())
             self.morb.dilution_factor = float(self.variables['dilution_factor'].get())
             self.morb.dilution_threshold = float(self.variables['dilution_threshold'].get())
+            self.morb.max_growth_fraction = float(self.variables['max_growth_fraction'].get())
+            self.morb.AB_switch_conc = float(self.variables['AB_switch_conc'].get())
             self.morb.calculate_derived_values()
 
         self.top.destroy()
@@ -231,6 +235,7 @@ class morbidostat_interface(Tkinter.Frame):
         self.morb = morb
         self.all_good=True
         #self.update_status_thread = threading.Thread(target = self.update_status_strings)
+        self.open_experiment_type_selector()
         self.run_time_window()
 
     def call_set_up(self):
@@ -335,6 +340,7 @@ class morbidostat_interface(Tkinter.Frame):
         '''
         set up the window displaying status, time, and experiment type
         '''
+        # prompt the user for the experiment type
         self.run_time_frame = Tkinter.Frame(self.master)
         self.master.title("Morbidostat control")
         self.run_time_frame.pack()
@@ -407,8 +413,6 @@ class morbidostat_interface(Tkinter.Frame):
         self.resume_button.grid(row= 6, column = 4)
         self.quit_button.grid(row= 6, column = 5)
 
-        # prompt the user for the experiment type
-        self.open_experiment_type_selector()
         # make sure all strings are uptodate
         self.update_status_strings()
     
