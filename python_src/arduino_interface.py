@@ -22,7 +22,7 @@ pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
 vials_to_pins_assignment = [10,5,0, 11,6,1,12,7,2,13,8,3,14,9,4]
 
 ####
-morb_path = '~/morbidostat/python_arduino/'
+morb_path = '/home/morbidostat/morbidostat/python_arduino/'
 
 ############
 # load calibration parameters
