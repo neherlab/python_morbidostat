@@ -4,7 +4,7 @@ import math
 import threading
 import numpy as np
 
-morb_path = '/home/morbidostat/morbidostat/python_arduino/'
+morb_path = '/ebio/ag-neher/share/users/rneher/morbidostat/python_arduino/'
 pump_calibration_file_base = morb_path+'python_src/pump_calibration'
 OD_calibration_file_name = morb_path+'python_src/OD_calibration.dat'
 
@@ -89,6 +89,12 @@ class morbidostat:
 
 
     def measure_OD(self, vial, n_measurements=1, dt=10, switch_light_off=True):
+        '''
+        return the simulated OD values
+        '''
+        return max(0.004,self.OD[vial]+0.001*np.random.randn()), 0
+
+    def measure_voltage(self, vial, n_measurements=1, dt=10, switch_light_off=True):
         '''
         return the simulated OD values
         '''

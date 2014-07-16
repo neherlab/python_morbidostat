@@ -191,7 +191,7 @@ class morbidostat_monitor(object):
 
 
 if __name__ == '__main__':
-    if len(sys.argv):
+    if len(sys.argv)>1:
         plt.ion()
         morb_monitor = morbidostat_monitor(sys.argv[1])
         plt.show()

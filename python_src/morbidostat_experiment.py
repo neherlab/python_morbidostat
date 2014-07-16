@@ -22,6 +22,7 @@ def calibrate_OD(vials = None):
     '''
     measure OD of OD standard, calculate regression coefficients
     '''
+    import matplotlib.pyplot as plt
     if vials is None:
         vials = range(15)
     calibration_morb = morb.morbidostat()
@@ -48,7 +49,7 @@ def calibrate_OD(vials = None):
             for vi,vial in enumerate(vials):
                 OKstr = raw_input("Place OD standard in receptible "+str(vial+1)+
                                   ", press enter when done")
-                time.sleep(1.0)  #delay for 1 second to allow for heating of the diode
+                time.sleep(0.001)  #delay for 1 second to allow for heating of the diode
                 voltages[-1][vi] = calibration_morb.measure_voltage(vial, switch_light_off=True)[0]
                 print vial, "measurement ", voltages[-1][vi]
             no_valid_standard=True
@@ -65,7 +66,7 @@ def calibrate_OD(vials = None):
         tmp_time = time.localtime()
 
         # make figure showing calibration
-        plt.plot(ODs, voltages)
+        plt.plot(ODs, voltages.T, 'o', ls='-')
         plt.xlabel('OD standard')
         plt.ylabel('measured signal (0-1023)')
 
@@ -73,11 +74,15 @@ def calibrate_OD(vials = None):
         date_string = "".join([format(v,'02d') for v in
                                [tmp_time.tm_year, tmp_time.tm_mon, tmp_time.tm_mday]])                               
         with open(morb.morb_path+'data/voltage_measurements_'+date_string+'.txt', 'w') as volt_file:
-            for vi in range(len(ODs)):
-                volt_file.write(ODs[vi]+'\t')
-                np.savetxt(volt_file[vi], voltages)
+            for oi in range(len(ODs)):
+                volt_file.write(str(ODs[oi]))
+                for vi in range(len(vials)):
+                    volt_file.write('\t'+str(voltages[vi,oi]))
+                volt_file.write('\n')
+
     else:
         print("need measurements for at least two OD standards") 
+    return fit_parameters, ODs, voltages
 
 def calibrate_pumps(pump_type, vials = None, dt = 10):
     '''
