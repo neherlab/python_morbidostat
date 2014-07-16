@@ -1,13 +1,13 @@
 from __future__ import division
-#import arduino_interface as morb
-import morbidostat_simulator as morb
+import arduino_interface as morb
+#import morbidostat_simulator as morb
 import numpy as np
 from scipy.stats import linregress
 import time,copy,threading,os
 
 from scipy import stats
 #plt.ion()
-debug = False
+debug = True
 
 do_nothing = ('as is',1)
 dilute_w_medium = ('medium',2)
@@ -28,27 +28,30 @@ def calibrate_OD(vials = None):
     no_valid_standard=True
     ODs = []
     voltages = []
-    while True:
+    all_cycles_measured = False
+    while all_cycles_measured==False:
         while no_valid_standard:
             s = raw_input("Enter OD of standard [q to quit]: ")
-            if s==q:
+            if s=='q':
                 print("Aborting calibration")
-                return
+		all_cycles_measured = True
+		break
             try:
                 cur_OD = float(s)
                 no_valid_standard=False
             except:
                 print("invalid entry")
         
-        ODs.append(cur_OD)
-        voltages.append(np.zeros(len(vials)))
-        for vi,vial in enumerate(vials):
-            OKstr = raw_input("Place OD standard in receptible "+str(vial+1)+
-                              ", press enter when done")
-            time.sleep(2.0)
-            voltages[-1][vi] = calibration_morb.measure_voltage(calibration_morb.vial_to_pin(vial), 
-                                                                switch_light_off=True)
-            print vial, "measurement ", voltages[-1][vi]
+        if not all_cycles_measured: # prompt user for 15 measurements while q is not pressed
+            ODs.append(cur_OD)
+            voltages.append(np.zeros(len(vials)))
+            for vi,vial in enumerate(vials):
+                OKstr = raw_input("Place OD standard in receptible "+str(vial+1)+
+                                  ", press enter when done")
+                time.sleep(1.0)  #delay for 1 second to allow for heating of the diode
+                voltages[-1][vi] = calibration_morb.measure_voltage(vial, switch_light_off=True)[0]
+                print vial, "measurement ", voltages[-1][vi]
+            no_valid_standard=True
 
     if len(ODs)>1:
         print("Collected "+str(len(ODs))+" OD voltage pairs, calculating voltage -> OD conversion")
@@ -59,6 +62,20 @@ def calibrate_OD(vials = None):
             slope, intercept, r,p,stderr = linregress(ODs, voltages[vi,:])
             fit_parameters[vi,:] = [1.0/slope,  -intercept/slope]
         np.savetxt(morb.OD_calibration_file_name, fit_parameters)
+        tmp_time = time.localtime()
+
+        # make figure showing calibration
+        plt.plot(ODs, voltages)
+        plt.xlabel('OD standard')
+        plt.ylabel('measured signal (0-1023)')
+
+        # save calibration measurements
+        date_string = "".join([format(v,'02d') for v in
+                               [tmp_time.tm_year, tmp_time.tm_mon, tmp_time.tm_mday]])                               
+        with open(morb.morb_path+'data/voltage_measurements_'+date_string+'.txt', 'w') as volt_file:
+            for vi in range(len(ODs)):
+                volt_file.write(ODs[vi]+'\t')
+                np.savetxt(volt_file[vi], voltages)
     else:
         print("need measurements for at least two OD standards") 
 
@@ -138,7 +155,6 @@ class morbidostat(object):
 
         if (np.max(vials)<15):
             self.vials = copy.copy(vials)
-            self.n_vials = len(vials)
         else:
             print("Morbidostat set-up: all vial numbers must be between 0 and 14")
             self.vials = []
@@ -147,7 +163,7 @@ class morbidostat(object):
         self.culture_volume = 10 # target volume in milliliters
         self.dilution_factor = 0.9
         self.dilution_threshold = 0.03
-        self.extra_suction  = 5 # extra volume that is being sucked out of the vials 
+        self.extra_suction  = 2 # extra volume that is being sucked out of the vials [ml]
         self.drugA = drugA
         self.drugB = drugB
         self.experiment_name = ''
@@ -180,6 +196,7 @@ class morbidostat(object):
         self.n_cycles = self.experiment_duration//self.cycle_dt
         self.dilution_volume = self.culture_volume*(1.0/np.max((0.5, self.dilution_factor))-1.0)
         self.target_growth_rate = -np.log(self.dilution_factor)/self.cycle_dt
+        self.n_vials = len(self.vials)
 
 
     def set_up(self):
@@ -208,7 +225,7 @@ class morbidostat(object):
         
         # file names
         tmp_time = time.localtime()
-        self.base_name = '../data/'+"".join([format(v,'02d') for v in
+        self.base_name = morb.morb_path+'data/'+"".join([format(v,'02d') for v in
                                              [tmp_time.tm_year, tmp_time.tm_mon, tmp_time.tm_mday]])\
                                   + '_'.join(['',self.experiment_name,self.bug, self.drugA,self.drugB, self.experiment_type])+'/'
         if os.path.exists(self.base_name):
@@ -456,7 +473,7 @@ class morbidostat(object):
         index_vial_pairs = zip(range(len(self.vials)), self.vials)
         for rep in xrange(self.n_reps):
             for vi,vial in index_vial_pairs[::(1-2*(rep%2))]:
-                self.last_OD_measurements[self.OD_measurement_counter, vi] += self.morb.measure_OD(vial, 1, 0, False)
+                self.last_OD_measurements[self.OD_measurement_counter, vi] += self.morb.measure_OD(vial, 1, 0, False)[0]
                 if debug:
                      print np.round(self.last_OD_measurements[self.OD_measurement_counter, vi],4),
             

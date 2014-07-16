@@ -4,6 +4,10 @@ import math
 import threading
 import numpy as np
 
+morb_path = '/home/morbidostat/morbidostat/python_arduino/'
+pump_calibration_file_base = morb_path+'python_src/pump_calibration'
+OD_calibration_file_name = morb_path+'python_src/OD_calibration.dat'
+
 debug = False
 # dictionary mapping pumps to pins
 pumps = {'medium': range(7,7+15), 
@@ -88,7 +92,7 @@ class morbidostat:
         '''
         return the simulated OD values
         '''
-        return max(0.004,self.OD[vial]+0.001*np.random.randn())
+        return max(0.004,self.OD[vial]+0.001*np.random.randn()), 0
 
     def switch_light(self, state):
         pass

@@ -17,7 +17,7 @@ class morbidostat_monitor(object):
             plt.ioff()
             self.init_data_plot()
             self.figure_updater = threading.Thread(target = self.update_cycle)
-            self.figure_updater.daemon=True
+            #self.figure_updater.daemon=True
         else:
             print "data directory not found"
     
@@ -145,7 +145,7 @@ class morbidostat_monitor(object):
         self.temperature_curves = [plt.plot([],[],c='b', label = 'T1')[0], plt.plot([],[],c='r', label = 'T2')[0]]
         plt.legend()
 
-        plt.show()
+        plt.draw()
 
     def update_plot(self):
         '''
@@ -192,8 +192,14 @@ class morbidostat_monitor(object):
 
 if __name__ == '__main__':
     if len(sys.argv):
+        plt.ion()
         morb_monitor = morbidostat_monitor(sys.argv[1])
-        time.sleep(3)
-        morb_monitor.start()
+        plt.show()
+        morb_monitor.update_all()
+        print "to refresh, type morb_monitor.update_all()"
+        print "to select displayed time window, set morb_monitor.data_range = #seconds to view"
+        print "and refresh"
+        #time.sleep(3)
+        #morb_monitor.start()
     else:
         print "name of data directory required"

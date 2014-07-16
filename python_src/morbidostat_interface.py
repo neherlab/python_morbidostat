@@ -131,8 +131,8 @@ class set_up_dialog(Tkinter.Frame):
             self.morb.dilution_threshold = float(self.variables['dilution_threshold'].get())
             self.morb.max_growth_fraction = float(self.variables['max_growth_fraction'].get())
             self.morb.AB_switch_conc = float(self.variables['AB_switch_conc'].get())
-            self.morb.calculate_derived_values()
 
+        self.morb.calculate_derived_values()
         self.top.destroy()
         
 
@@ -235,9 +235,8 @@ class morbidostat_interface(Tkinter.Frame):
         self.morb = morb
         self.all_good=True
         #self.update_status_thread = threading.Thread(target = self.update_status_strings)
-        self.open_experiment_type_selector()
         self.run_time_window()
-
+        
     def call_set_up(self):
         '''
         called upon parameters button press. opens dialog 
@@ -414,6 +413,7 @@ class morbidostat_interface(Tkinter.Frame):
         self.quit_button.grid(row= 6, column = 5)
 
         # make sure all strings are uptodate
+        self.open_experiment_type_selector()
         self.update_status_strings()
     
     def update_status_strings(self):

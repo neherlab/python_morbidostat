@@ -19,14 +19,16 @@ pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
          'waste': suction_pump}
 
 
-vials_to_bin_assignment = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14]
+vials_to_pins_assignment = [10,5,0, 11,6,1,12,7,2,13,8,3,14,9,4]
 
+####
+morb_path = '~/morbidostat/python_arduino/'
 
 ############
 # load calibration parameters
 ############
-pump_calibration_file_base = 'pump_calibration'
-OD_calibration_file_name = 'OD_calibration.dat'
+pump_calibration_file_base = morb_path+'python_src/pump_calibration'
+OD_calibration_file_name = morb_path+'python_src/OD_calibration.dat'
 pump_calibration_params = {}
 for pump_type in pumps:
     fname = pump_calibration_file_base+'_'+pump_type+'.dat'
@@ -55,7 +57,7 @@ if os.path.isfile(OD_calibration_file_name):
     try:
         voltage_to_OD_params = np.loadtxt(OD_calibration_file_name)
     except:
-        print "error opening OD calibration file, all OD parameters set to zero"
+        print "error opening OD calibration file, all OD parameters set to zeros"
         voltage_to_OD_params = np.zeros((15,2))
 else:
     print "no OD calibration file, all OD parameters set to zero"
@@ -108,12 +110,12 @@ class morbidostat:
                 self.morbidostat_OK = False
         return port_number
 
-    def volume_to_time(pump_type, pump, volume):
+    def volume_to_time(self,pump_type, pump, volume):
         if pump_type in pump_calibration_params:
-            if pump_number<len(pump_calibration_params[pump_type]):
-                return volume/pump_calibration_params[pump_type][pump_number]
+            if pump<len(pump_calibration_params[pump_type]):
+                return volume/pump_calibration_params[pump_type][pump]
             else:
-                print "invalid pump number", pump_number, 'only ',len(pump_calibration_params[pump_type]), \
+                print "invalid pump number", pump, 'only ',len(pump_calibration_params[pump_type]), \
                     'calibration parameters'
                 return 0
         else:
@@ -155,7 +157,7 @@ class morbidostat:
 
     def vial_to_pin(self, vial):
         assert vial<15, "maximal vial number is 15, got "+str(vial)
-        return vial_to_pin_assignment[vial]
+        return vials_to_pins_assignment[vial]
 
     def voltage_to_OD(self,vi, mean_val, std_val):
         return voltage_to_OD_params[vi,0]*mean_val-voltage_to_OD_params[vi,1], \
@@ -172,11 +174,14 @@ class morbidostat:
         dt: time lag between measurements (<10000 ms)
         '''
         analog_pin = self.vial_to_pin(vial)
-        mean_val, std_val, cstr= self.measure_voltage( analog_pin, n_measurements, dt, switch_light_off)
+        mean_val, std_val, cstr= self.measure_voltage_pin( analog_pin, n_measurements, dt, switch_light_off)
         return self.voltage_to_OD(vial, mean_val, std_val)
 
+    def measure_voltage(self,vial, n_measurements=1, dt=10, switch_light_off=True):
+        analog_pin = self.vial_to_pin(vial)
+	return self.measure_voltage_pin(analog_pin, n_measurements, dt, switch_light_off)	
 
-    def measure_voltage(self, analog_pin, n_measurements=1, dt=10, switch_light_off=True):
+    def measure_voltage_pin(self, analog_pin, n_measurements=1, dt=10, switch_light_off=True):
         '''
         measure the voltage at specified pin n_measurement times with a time lag
         of dt milli seconds between measurements. 
