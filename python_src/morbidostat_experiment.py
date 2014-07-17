@@ -60,6 +60,7 @@ def calibrate_OD(vials = None):
         voltages = np.array(voltages).T
         fit_parameters = np.zeros((len(vials), 2))
         for vi,vial in enumerate(vials):
+            # try to restrict fit to measurements with less than AD signal <900 (1023 is max)
             good_measurements = voltages[vi,:]<900
             if good_measurements.sum()>1:
                 slope, intercept, r,p,stderr = linregress(ODs[good_measurements], voltages[vi,good_measurements])
