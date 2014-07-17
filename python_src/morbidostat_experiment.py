@@ -60,7 +60,12 @@ def calibrate_OD(vials = None):
         voltages = np.array(voltages).T
         fit_parameters = np.zeros((len(vials), 2))
         for vi,vial in enumerate(vials):
-            slope, intercept, r,p,stderr = linregress(ODs, voltages[vi,:])
+            good_measurements = voltages[vi,:]<900
+            if good_measurements.sum()>1:
+                slope, intercept, r,p,stderr = linregress(ODs[good_measurements], voltages[vi,good_measurements])
+            else:
+                print("less than 2 good measurements, also using saturated measurements for vial"+str(vial))
+                slope, intercept, r,p,stderr = linregress(ODs, voltages[vi,:])                
             fit_parameters[vi,:] = [1.0/slope,  -intercept/slope]
         np.savetxt(morb.OD_calibration_file_name, fit_parameters)
         tmp_time = time.localtime()
