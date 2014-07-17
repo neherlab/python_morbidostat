@@ -49,8 +49,10 @@ def calibrate_OD(vials = None):
             for vi,vial in enumerate(vials):
                 OKstr = raw_input("Place OD standard in receptible "+str(vial+1)+
                                   ", press enter when done")
-                time.sleep(0.001)  #delay for 1 second to allow for heating of the diode
+                calibration_morb.switch_light(True)
+                time.sleep(1.0)  #delay for 1 second to allow for heating of the diode
                 voltages[-1][vi] = calibration_morb.measure_voltage(vial, switch_light_off=True)[0]
+                time.sleep(1.0)
                 print vial, "measurement ", voltages[-1][vi]
             no_valid_standard=True
 
@@ -67,6 +69,7 @@ def calibrate_OD(vials = None):
             else:
                 print("less than 2 good measurements, also using saturated measurements for vial"+str(vial))
                 slope, intercept, r,p,stderr = linregress(ODs, voltages[vi,:])                
+            print vial, slope, intercept
             fit_parameters[vi,:] = [1.0/slope,  -intercept/slope]
         np.savetxt(morb.OD_calibration_file_name, fit_parameters)
         tmp_time = time.localtime()
@@ -75,6 +78,7 @@ def calibrate_OD(vials = None):
         plt.plot(ODs, voltages.T, 'o', ls='-')
         plt.xlabel('OD standard')
         plt.ylabel('measured signal (0-1023)')
+        plt.draw()
 
         # save calibration measurements
         date_string = "".join([format(v,'02d') for v in
