@@ -19,7 +19,9 @@ pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
          'waste': suction_pump}
 
 
-vials_to_pins_assignment = [10,5,0, 11,6,1,12,7,2,13,8,3,14,9,4]
+#vials_to_pins_assignment = [10,5,0, 11,6,1,12,7,2,13,8,3,14,9,4]
+vials_to_pins_assignment = [0,5,10,1,6,11,2,7,12,3,8,13,4,9,14]
+
 
 ####
 morb_path = '/home/morbidostat/morbidostat/python_arduino/'
@@ -160,7 +162,7 @@ class morbidostat:
         return vials_to_pins_assignment[vial]
 
     def voltage_to_OD(self,vi, mean_val, std_val):
-        return voltage_to_OD_params[vi,0]*mean_val-voltage_to_OD_params[vi,1], \
+        return voltage_to_OD_params[vi,0]*mean_val+voltage_to_OD_params[vi,1], \
             voltage_to_OD_params[vi,0]*std_val
 
     def measure_OD(self, vial, n_measurements=1, dt=10, switch_light_off=True):
