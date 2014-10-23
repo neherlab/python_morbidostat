@@ -2,7 +2,7 @@
 
 /* DS18S20 Temperature chip i/o */
 
-OneWire  ds(10);  // on pin 10
+OneWire  ds(15);  // on pin 10
 
 void setup(void) {
   Serial.begin(9600);

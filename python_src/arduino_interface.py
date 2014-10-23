@@ -10,7 +10,7 @@ debug = False
 baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
 light_switch = 22 
-thermometer_pin = 15
+thermometer_pin = 4
 suction_pump = 3
 # dictionary mapping pumps to pins
 pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
@@ -153,7 +153,6 @@ class morbidostat:
     def pump_to_pin(self, pump_type, pump_number):
         assert pump_type in pumps, "Bad pump type: "+str(pump_type)
         assert pump_number>=0 and pump_number<15, "Bad pump number, got "+str(pump_number)
-
         return pumps[pump_type][pump_number]
 
 

@@ -49,10 +49,8 @@ def calibrate_OD(vials = None):
             for vi,vial in enumerate(vials):
                 OKstr = raw_input("Place OD standard in receptible "+str(vial+1)+
                                   ", press enter when done")
-                calibration_morb.switch_light(True)
-                time.sleep(1.0)  #delay for 1 second to allow for heating of the diode
+                time.sleep(0.001)  #delay for 1 second to allow for heating of the diode
                 voltages[-1][vi] = calibration_morb.measure_voltage(vial, switch_light_off=True)[0]
-                time.sleep(1.0)
                 print vial, "measurement ", voltages[-1][vi]
             no_valid_standard=True
 
@@ -62,14 +60,12 @@ def calibrate_OD(vials = None):
         voltages = np.array(voltages).T
         fit_parameters = np.zeros((len(vials), 2))
         for vi,vial in enumerate(vials):
-            # try to restrict fit to measurements with less than AD signal <900 (1023 is max)
             good_measurements = voltages[vi,:]<900
             if good_measurements.sum()>1:
                 slope, intercept, r,p,stderr = linregress(ODs[good_measurements], voltages[vi,good_measurements])
             else:
                 print("less than 2 good measurements, also using saturated measurements for vial"+str(vial))
                 slope, intercept, r,p,stderr = linregress(ODs, voltages[vi,:])                
-            print vial, slope, intercept
             fit_parameters[vi,:] = [1.0/slope,  -intercept/slope]
         np.savetxt(morb.OD_calibration_file_name, fit_parameters)
         tmp_time = time.localtime()
@@ -78,7 +74,6 @@ def calibrate_OD(vials = None):
         plt.plot(ODs, voltages.T, 'o', ls='-')
         plt.xlabel('OD standard')
         plt.ylabel('measured signal (0-1023)')
-        plt.draw()
 
         # save calibration measurements
         date_string = "".join([format(v,'02d') for v in
@@ -136,6 +131,75 @@ def calibrate_pumps(pump_type, vials = None, dt = 10):
     # calculate pump_rate and save to file
     pump_rate = np.diff(weight)/dt
     np.savetxt(morb.pump_calibration_file_base+'_'+pump_type+'.dat', pump_rate)
+    
+def wash_tubing(pumps = None, bleach_runtime = None):
+    '''
+    Washing routine to sterilize all tubing. Valid arguments are pumps as an array and 
+    bleach_time in seconds. Without arguments standard is used. 
+    - pumps: medium, drugA and drugB
+    - bleach_runtime: 300 (= 5 min)
+    '''
+    
+    # standard
+    if pumps == None:
+        pumps = ['medium', 'drugA', 'drugB']
+    elif bleach_runtime == None:
+        bleach_runtime = 10
+
+    wash_time = 10
+    wait_time = 10
+    wash_morb = morbidostat()
+    print("Starting sterilization of tubing...")
+    
+    # washing cycle
+    for pump in pumps:
+        
+        # bleach
+        print("Connect bleach reservoir to " +str(pump) 
+              + " pumps and spray ethanol on all Luer connectors.")
+        s = raw_input("Press enter to run pumps for" + str(bleach_runtime) + " min.")
+        wash_morb.run_all_pumps(pump, bleach_runtime)
+        wash_morb.morb.run_waste_pump(bleach_runtime)
+        # wait
+        print("Wait for 5 min.")
+        time.sleep(wait_time)
+        
+        # sterile water
+        print("Swap bleach reservoir with steril water reservoir.")
+        s = raw_input("Press enter to run pumps for 5 min.")
+        wash_morb.run_all_pumps(pump, wash_time)
+        wash_morb.morb.run_waste_pump(bleach_runtime)
+        
+        # ethanol
+        print("Swap steril water reservoir with ethanol reservoir.")
+        s = raw_input("Press enter to run pumps for 5 min.")
+        wash_morb.run_all_pumps(pump, wash_time)
+        wash_morb.morb.run_waste_pump(bleach_runtime)
+        # wait
+        print("Wait for 15 min.")
+        time.sleep(wait_time*3)
+        
+        # sterile water
+        print("Swap ethanol reservoir with steril water reservoir.")
+        s = raw_input("Press enter to run pumps for 5 min.")
+        wash_morb.run_all_pumps(pump, wash_time)
+        wash_morb.morb.run_waste_pump(bleach_runtime)
+        
+        # pump solution
+        print("Swap steril water reservoir with " + str(pump) 
+              + " reservoir and insert sterile filters between Luer connectors.")
+        s = raw_input("Press enter to run pumps for 5 min.")
+        wash_morb.run_all_pumps(pump, wash_time)
+        wash_morb.morb.run_waste_pump(bleach_runtime)
+        
+        # finish of a cycle
+        print("Washing of " + str(pump) + " pumps completed.")
+        s = raw_input("Press enter to continue, q to quit.")
+        if s == 'q':
+            print("Quited washing cycle.")
+            return
+        
+    print("Washing cycle finished.")
 
 class morbidostat(object):
     '''
@@ -153,7 +217,7 @@ class morbidostat(object):
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
-        self.second = 1.0
+        self.second = 0.01
 
         # set up the morbidostat
         self.morb = morb.morbidostat()
