@@ -217,7 +217,7 @@ class morbidostat(object):
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
-        self.second = 0.01
+        self.second = 1.0
 
         # set up the morbidostat
         self.morb = morb.morbidostat()
