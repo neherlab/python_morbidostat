@@ -131,6 +131,36 @@ def calibrate_pumps(pump_type, vials = None, dt = 10):
     # calculate pump_rate and save to file
     pump_rate = np.diff(weight)/dt
     np.savetxt(morb.pump_calibration_file_base+'_'+pump_type+'.dat', pump_rate)
+
+def calibrate_pumps_parallel(pump_type, vials = None, dt = 10):
+    '''
+    Routine that runs all pumps sequentially assuming the outlet is sitting on 
+    on a balance. after running a pump for dt seconds, the user is prompted for the weight
+    until all 15 pumps have been run
+    '''
+    if vials is None:
+        vials = range(15)
+    s = raw_input("press enter to start, q to stop: ")
+    if len(s)>0:
+        print("Aborting calibration")
+        return
+
+    # loop over vials, prompt for weight
+    weight  = np.zeros(len(vials))   
+    for vi,vial in enumerate(vials):
+        no_weight = True
+        while no_weight:
+            s = raw_input('weight of vial '+str(vial+1)+': ')
+            try:
+                weight[vi] =float(s)
+                no_weight = False
+            except:
+                print("invalid weight")
+
+
+    # calculate pump_rate and save to file
+    pump_rate = weight/dt
+    np.savetxt(morb.pump_calibration_file_base+'_'+pump_type+'.dat', pump_rate)
     
 def wash_tubing(pumps = None, bleach_runtime = None):
     '''
