@@ -180,7 +180,7 @@ class morbidostat:
 
     def measure_voltage(self,vial, n_measurements=1, dt=10, switch_light_off=True):
         analog_pin = self.vial_to_pin(vial)
-	return self.measure_voltage_pin(analog_pin, n_measurements, dt, switch_light_off)	
+        return self.measure_voltage_pin(analog_pin, n_measurements, dt, switch_light_off)	
 
     def measure_voltage_pin(self, analog_pin, n_measurements=1, dt=10, switch_light_off=True):
         '''

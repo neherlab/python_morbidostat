@@ -269,7 +269,7 @@ class morbidostat(object):
             self.vials = []
 
         self.target_OD = target_OD
-        self.culture_volume = 10 # target volume in milliliters
+        self.culture_volume = 18 # target volume in milliliters
         self.dilution_factor = 0.9
         self.dilution_threshold = 0.03
         self.extra_suction  = 2 # extra volume that is being sucked out of the vials [ml]
@@ -280,7 +280,7 @@ class morbidostat(object):
         self.drugA_concentration = drugA_concentration
         self.drugB_concentration = drugB_concentration
         # data acqusition specifics
-        self.n_reps=2
+        self.n_reps=8
         self.buffer_time = 10
         # counters
         self.OD_measurement_counter = 0
@@ -301,10 +301,11 @@ class morbidostat(object):
         '''
         values calculated after other parameters are set. 
         '''
-        self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time-self.buffer_time)//self.OD_dt
         self.n_cycles = self.experiment_duration//self.cycle_dt
         self.dilution_volume = self.culture_volume*(1.0/np.max((0.5, self.dilution_factor))-1.0)
         self.target_growth_rate = -np.log(self.dilution_factor)/self.cycle_dt
+        self.pump_time = np.max([self.morb.volume_to_time('medium',vi,self.dilution_volume) for vi in self.vials])
+        self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time-self.pump_time, self.buffer_time)//self.OD_dt
         self.n_vials = len(self.vials)
 
 
@@ -522,7 +523,7 @@ class morbidostat(object):
         self.OD_thread = threading.Thread(target = self.measure_OD_for_cycle)
         # start thread and wait for it to finish
         self.OD_thread.start()
-        self.OD_thread.join(timeout=self.OD_dt*(self.ODs_per_cycle+5)*self.second)
+        self.OD_thread.join(timeout=(self.OD_dt+5)*self.ODs_per_cycle*self.second)
         if self.OD_thread.is_alive():
             print("morbidostat_cycle: OD measurement timed out")
 
@@ -584,7 +585,7 @@ class morbidostat(object):
             for vi,vial in index_vial_pairs[::(1-2*(rep%2))]:
                 self.last_OD_measurements[self.OD_measurement_counter, vi] += self.morb.measure_OD(vial, 1, 0, False)[0]
                 if debug:
-                     print np.round(self.last_OD_measurements[self.OD_measurement_counter, vi],4),
+                     print np.round(self.last_OD_measurements[self.OD_measurement_counter, vi],4)/(rep+1.0),
             
         self.last_OD_measurements[self.OD_measurement_counter, :] /= self.n_reps
         if debug:
