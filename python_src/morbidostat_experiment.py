@@ -305,7 +305,7 @@ class morbidostat(object):
         self.dilution_volume = self.culture_volume*(1.0/np.max((0.5, self.dilution_factor))-1.0)
         self.target_growth_rate = -np.log(self.dilution_factor)/self.cycle_dt
         self.pump_time = np.max([self.morb.volume_to_time('medium',vi,self.dilution_volume) for vi in self.vials])
-        self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time-self.pump_time, self.buffer_time)//self.OD_dt
+        self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
         self.n_vials = len(self.vials)
 
 
