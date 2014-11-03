@@ -329,6 +329,7 @@ class morbidostat_interface(Tkinter.Frame):
         '''
         format seconds into a human readable string
         '''
+	nsec=int(nsec)
         hours = nsec//3600
         minutes = nsec//60 - hours*60
         seconds = nsec-60*minutes-hours*3600

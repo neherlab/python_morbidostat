@@ -305,7 +305,7 @@ class morbidostat(object):
         self.dilution_volume = self.culture_volume*(1.0/np.max((0.5, self.dilution_factor))-1.0)
         self.target_growth_rate = -np.log(self.dilution_factor)/self.cycle_dt
         self.pump_time = np.max([self.morb.volume_to_time('medium',vi,self.dilution_volume) for vi in self.vials])
-        self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
+        self.ODs_per_cycle = int(self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
         self.n_vials = len(self.vials)
 
 
@@ -574,22 +574,23 @@ class morbidostat(object):
         the IR LEDS are switched off at the end.
         '''
         t = self.experiment_time()
-        if debug:
-            print "OD",
         self.last_OD_measurements[self.OD_measurement_counter, :] = 0
         self.morb.switch_light(True) # switch light on
         time.sleep(1.0*self.second)  # sleep for one second to allow for heating of LEDs
 
         index_vial_pairs = zip(range(len(self.vials)), self.vials)
         for rep in xrange(self.n_reps):
+            if debug:
+                print "OD rep",rep,
             for vi,vial in index_vial_pairs[::(1-2*(rep%2))]:
                 self.last_OD_measurements[self.OD_measurement_counter, vi] += self.morb.measure_OD(vial, 1, 0, False)[0]
                 if debug:
-                     print np.round(self.last_OD_measurements[self.OD_measurement_counter, vi],4)/(rep+1.0),
+                     print format(np.round(self.last_OD_measurements[self.OD_measurement_counter, vi],4)/(rep+1.0), '0.3f'),
             
+            if debug:
+	            print 
         self.last_OD_measurements[self.OD_measurement_counter, :] /= self.n_reps
-        if debug:
-            print 
+        print "OD:", ' '.join(map(str,np.round(self.last_OD_measurements[self.OD_measurement_counter, :],3)))
         self.last_OD_measurements[self.OD_measurement_counter,-1]=t
         self.morb.switch_light(False)
 
