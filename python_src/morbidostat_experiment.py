@@ -187,7 +187,7 @@ def wash_tubing(pumps = None, bleach_runtime = None):
         # bleach
         print("Connect bleach reservoir to " +str(pump) 
               + " pumps and spray ethanol on all Luer connectors.")
-        s = raw_input("Press enter to run pumps for" + str(bleach_runtime) + " min.")
+        s = raw_input("Press enter to run pumps for " + str(bleach_runtime) + " seconds.")
         wash_morb.run_all_pumps(pump, bleach_runtime)
         wash_morb.morb.run_waste_pump(bleach_runtime)
         # wait
@@ -295,6 +295,7 @@ class morbidostat(object):
         self.interrupted = False
         self.running = False
         self.calculate_derived_values()
+        self.override = False
 
 
     def calculate_derived_values(self):
@@ -654,7 +655,7 @@ class morbidostat(object):
 
     def feedback_on_OD(self):
         '''
-        THis function is called every dilute_dt
+        This function is called every dilute_dt
         it interogates the OD measurements and decides whether to 
         (i) do nothing
         (ii) dilute with medium
@@ -662,32 +663,54 @@ class morbidostat(object):
         (iv) dilute with drug B
         the dilution counter is incremented at the end
         '''
+        # enumerate all vials
         for vi, vial in enumerate(self.vials):
-            if self.final_OD_estimate[self.cycle_counter,vi]<self.dilution_threshold:
+            # check manual override of decision
+            if self.override:
+                print 'Specify decision:\n(1) do nothing\n(2) dilute with medium\n(3) dilute with drug A\n(4) dilute with drug B'
+                s = input('Input: ')
+                if s==1:
+                    tmp_decision = do_nothing
+                elif s==2:
+                    tmp_decision = dilute_w_medium
+                elif s==3:
+                    tmp_decision = dilute_w_drugA 
+                elif s==4:
+                    tmp_decision = dilute_w_drugB   
+            # check dilution threshold            
+            elif self.final_OD_estimate[self.cycle_counter,vi]<self.dilution_threshold:
                 tmp_decision = do_nothing
                 vol_mod=0
+            # start feedback
             else:
                 tmp_decision = self.standard_feedback(vial)
 
-            
-            if tmp_decision[1]>0:
+            # check decision
+            if tmp_decision[1]>1:
+                # save volumes
                 self.added_volumes[vi]=self.dilution_volume
+                # dilute according to decision
                 self.morb.inject_volume(tmp_decision[0], vial, self.dilution_volume)
+                # save current drug concentration
                 self.vial_drug_concentration[self.cycle_counter+1,vi] = \
                     self.vial_drug_concentration[self.cycle_counter,vi]*self.dilution_factor
+                # save drugA concentration
                 if tmp_decision==dilute_w_drugA:
                     self.vial_drug_concentration[self.cycle_counter+1,vi]+= \
                         self.drugA_concentration*(1-self.dilution_factor)
+                # save drugB concentration
                 elif tmp_decision==dilute_w_drugB:
                     self.vial_drug_concentration[self.cycle_counter+1,vi]+=\
                         self.drugB_concentration*(1-self.dilution_factor)
-
+                # save decision
                 self.decisions[self.cycle_counter,vi] = tmp_decision[1]
+            # do nothing
             else:
+                # save current drug concentration
                 self.vial_drug_concentration[self.cycle_counter+1,vi] = \
                     self.vial_drug_concentration[self.cycle_counter,vi]
+            # save time of dilution
             self.vial_drug_concentration[self.cycle_counter+1,-1]=self.experiment_time()
-
                 
         print 'Cycle:',self.cycle_counter, self.experiment_time()
         print 'Growth rate (rel to target):',
