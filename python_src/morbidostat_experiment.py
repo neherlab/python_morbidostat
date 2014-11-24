@@ -162,7 +162,7 @@ def calibrate_pumps_parallel(pump_type, vials = None, dt = 10):
     pump_rate = weight/dt
     np.savetxt(morb.pump_calibration_file_base+'_'+pump_type+'.dat', pump_rate)
     
-def wash_tubing(pumps = None, bleach_runtime = None):
+def wash_tubing(pumps=None, bleach_runtime=None, vials=None):
     '''
     Washing routine to sterilize all tubing. Valid arguments are pumps as an array and 
     bleach_time in seconds. Without arguments standard is used. 
@@ -171,66 +171,85 @@ def wash_tubing(pumps = None, bleach_runtime = None):
     '''
     
     # standard
-    if pumps == None:
-        pumps = ['medium', 'drugA', 'drugB']
-    elif bleach_runtime == None:
+    if pumps is None:
+        pumps = ['drugB', 'medium', 'drugA']
+    elif bleach_runtime is None:
         bleach_runtime = 300
+
+    if vials is None:
+        vials=range(15)
 
     wash_time = 300
     wait_time = 300
-    wash_morb = morbidostat()
+    wash_morb = morbidostat(vials=vials)
     print("Starting sterilization of tubing...")
     
     # washing cycle
     for pump in pumps:
-        
         # bleach
         print("Connect bleach reservoir to " +str(pump) 
               + " pumps and spray ethanol on all Luer connectors.")
-        s = raw_input("Press enter to run pumps for" + str(bleach_runtime) + " min.")
+        s = raw_input("Press enter to run pumps for " + str(bleach_runtime) + " sec.")
         wash_morb.run_all_pumps(pump, bleach_runtime)
-        wash_morb.morb.run_waste_pump(bleach_runtime)
+        print("Wait until pumping is finished...")
+        time.sleep(bleach_runtime)
         # wait
         print("Wait for 5 min.")
         time.sleep(wait_time)
-        
         # sterile water
-        print("Swap bleach reservoir with steril water reservoir.")
+        print("Swap bleach reservoir with steril water reservoir: " +str(pump))
         s = raw_input("Press enter to run pumps for 5 min.")
         wash_morb.run_all_pumps(pump, wash_time)
-        wash_morb.morb.run_waste_pump(bleach_runtime)
-        
+        wash_morb.morb.run_waste_pump(bleach_runtime + wash_time)
+        #time.sleep(wash_time)
+
+    print("Wait for waste pump to finish.")
+          
+    for pump in pumps:
         # ethanol
-        print("Swap steril water reservoir with ethanol reservoir.")
+        print("Swap steril water reservoir with ethanol reservoir: " +str(pump))
         s = raw_input("Press enter to run pumps for 5 min.")
         wash_morb.run_all_pumps(pump, wash_time)
-        wash_morb.morb.run_waste_pump(bleach_runtime)
-        # wait
-        print("Wait for 15 min.")
-        time.sleep(wait_time*3)
-        
+        wash_morb.morb.run_waste_pump(wash_time)
+
+    print("Wait for pumps to finish (15 min incubation of EtOH).")        
+    # wait
+    #print("Wait for 15 min.")
+    #time.sleep(wait_time*3)
+     
+    for pumps in pumps:
         # sterile water
-        print("Swap ethanol reservoir with steril water reservoir.")
+        print("Swap ethanol reservoir with steril water reservoir: " +str(pump))
         s = raw_input("Press enter to run pumps for 5 min.")
         wash_morb.run_all_pumps(pump, wash_time)
-        wash_morb.morb.run_waste_pump(bleach_runtime)
-        
-        # pump solution
-        print("Swap steril water reservoir with " + str(pump) 
-              + " reservoir and insert sterile filters between Luer connectors.")
-        s = raw_input("Press enter to run pumps for 5 min.")
-        wash_morb.run_all_pumps(pump, wash_time)
-        wash_morb.morb.run_waste_pump(bleach_runtime)
-        
-        # finish of a cycle
-        print("Washing of " + str(pump) + " pumps completed.")
-        s = raw_input("Press enter to continue, q to quit.")
-        if s == 'q':
-            print("Quited washing cycle.")
-            return
-        
+        wash_morb.morb.run_waste_pump(wash_time)
+    
+    time.sleep(wash_time)    
     print("Washing cycle finished.")
 
+def pump_solutions(pumps=None, vials=None):
+    ''' 
+    Function to flush tubing with sterile solutions
+    standard: all vials, all pumps
+    '''    
+    if pumps is None:
+        pumps = ['drugB', 'medium', 'drugA']
+    elif vials is None:
+        vials=range(15)
+    
+    run_time = 100
+    wash_morb = morbidostat(vials=vials)
+
+    print("Connect solutions to pumps.")
+    s = raw_input("Press enter to run pumps.")
+
+    for pump in pumps:
+        wash_morb.run_all_pumps(pump, run_time)
+        wash_morb.morb.run_waste_pump(run_time)
+        time.sleep(run_time)
+
+    print("Morbidostat is ready to use.")    
+    
 class morbidostat(object):
     '''
     Running a morbidostat experiment. 
