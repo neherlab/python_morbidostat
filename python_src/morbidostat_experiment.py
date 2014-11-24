@@ -174,10 +174,10 @@ def wash_tubing(pumps = None, bleach_runtime = None):
     if pumps == None:
         pumps = ['medium', 'drugA', 'drugB']
     elif bleach_runtime == None:
-        bleach_runtime = 10
+        bleach_runtime = 300
 
-    wash_time = 10
-    wait_time = 10
+    wash_time = 300
+    wait_time = 300
     wash_morb = morbidostat()
     print("Starting sterilization of tubing...")
     
@@ -541,8 +541,8 @@ class morbidostat(object):
         self.morb.wait_until_mixed()
         # remove the max of the added volumes plus some safety margin. 
         # this will suck air in some vials. 
-        self.morb.remove_waste(max(self.added_volumes) + self.extra_suction)
-        
+        run_time = self.morb.remove_waste(max(self.added_volumes) + self.extra_suction)
+        self.morb.pump_off_threads[('waste pump',0)].join()
         self.temperatures[self.cycle_counter,-1] = t
         self.temperatures[self.cycle_counter,:2] = self.morb.temperatures
 

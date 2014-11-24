@@ -16,6 +16,7 @@ suction_pump = 3
 pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
          'drugB': [30,31, 32, 33,34,35, 23, 36,37, 24,25, 26,27,28,29], 
          'medium': [53,52,51,50,49,48, 45 , 47,46, 44,43,42,41,40,39],
+#         'medium': [41,40,39,44,43,42,45,47,46,50,49,48,53,52,51],
          'waste': suction_pump}
 
 
@@ -248,6 +249,7 @@ class morbidostat:
         if run_time>0:
             # run the pump for calculated time
             self.run_waste_pump(run_time)
+        return run_time
 
 
     def run_pump(self,pump_type='medium', pump_number=0, run_time=0.1):
