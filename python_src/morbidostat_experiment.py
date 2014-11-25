@@ -305,10 +305,10 @@ class morbidostat(object):
         self.OD_measurement_counter = 0
         self.cycle_counter = 0
         #feedback parameters
-        self.max_growth_fraction = 0.1  # increase antibiotics with 20% OD increase per cycle
+        self.max_growth_fraction = 0.2  # increase antibiotics with 20% OD increase per cycle
         self.max_OD_deviation = 0.2     # increase antibiotic if 20% above target OD
         self.AB_switch_conc = 0.3       # use high concentration if culture conc is 30% of drug A
-        self.rescue_threshold = -0.1    # dilute culture with medium only if growth rate is 10\% below target.
+        #self.rescue_threshold = -0.1    # dilute culture with medium only if growth rate is 10\% below target.
         # diagnostic variables
         self.stopped = True
         self.interrupted = False
@@ -654,16 +654,18 @@ class morbidostat(object):
         # calculate the amount by which OD exceeds the target
         excess_OD = (self.final_OD_estimate[self.cycle_counter,vi]-self.target_OD)
         # if neither OD nor growth are above thresholds, dilute with happy fluid
-        if expected_growth<self.target_OD*self.max_growth_fraction and excess_OD<self.max_OD_deviation*self.target_OD:
+
+        if expected_growth<self.target_OD*self.max_growth_fraction or excess_OD<self.max_OD_deviation*self.target_OD:
             # if drug conc in vial is low or expected growth too negative, dilute with medium 
-            if expected_growth<self.target_OD*self.rescue_threshold:
-                tmp_decision = dilute_w_medium
+            tmp_decision = dilute_w_medium
         else: # if feedback with drugs is required, dilute with one or the other drug depending on preex conc
-            if self.vial_drug_concentration[self.cycle_counter, vi]<self.AB_switch_conc*self.drugA_concentration:
-                tmp_decision = dilute_w_drugA
+            if self.decision[self.cycle_counter-1,vial]>2:
+                if self.vial_drug_concentration[self.cycle_counter, vi]<self.AB_switch_conc*self.drugA_concentration:
+                    tmp_decision = dilute_w_drugA
+                else:
+                    tmp_decision = dilute_w_drugB
             else:
-                tmp_decision = dilute_w_drugB
- 
+                tmp_decision = dilute_w_medium
         return tmp_decision
 
     def feedback_on_OD(self):
