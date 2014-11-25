@@ -162,7 +162,7 @@ def calibrate_pumps_parallel(pump_type, vials = None, dt = 10):
     pump_rate = weight/dt
     np.savetxt(morb.pump_calibration_file_base+'_'+pump_type+'.dat', pump_rate)
     
-def wash_tubing(pumps = None, bleach_runtime = None):
+def wash_tubing(pumps=None, bleach_runtime=None, vials=None):
     '''
     Washing routine to sterilize all tubing. Valid arguments are pumps as an array and 
     bleach_time in seconds. Without arguments standard is used. 
@@ -171,66 +171,85 @@ def wash_tubing(pumps = None, bleach_runtime = None):
     '''
     
     # standard
-    if pumps == None:
-        pumps = ['medium', 'drugA', 'drugB']
-    elif bleach_runtime == None:
-        bleach_runtime = 10
+    if pumps is None:
+        pumps = ['drugB', 'medium', 'drugA']
+    elif bleach_runtime is None:
+        bleach_runtime = 300
 
-    wash_time = 10
-    wait_time = 10
-    wash_morb = morbidostat()
+    if vials is None:
+        vials=range(15)
+
+    wash_time = 300
+    wait_time = 300
+    wash_morb = morbidostat(vials=vials)
     print("Starting sterilization of tubing...")
     
     # washing cycle
     for pump in pumps:
-        
         # bleach
         print("Connect bleach reservoir to " +str(pump) 
               + " pumps and spray ethanol on all Luer connectors.")
         s = raw_input("Press enter to run pumps for " + str(bleach_runtime) + " seconds.")
         wash_morb.run_all_pumps(pump, bleach_runtime)
-        wash_morb.morb.run_waste_pump(bleach_runtime)
+        print("Wait until pumping is finished...")
+        time.sleep(bleach_runtime)
         # wait
         print("Wait for 5 min.")
         time.sleep(wait_time)
-        
         # sterile water
-        print("Swap bleach reservoir with steril water reservoir.")
+        print("Swap bleach reservoir with steril water reservoir: " +str(pump))
         s = raw_input("Press enter to run pumps for 5 min.")
         wash_morb.run_all_pumps(pump, wash_time)
-        wash_morb.morb.run_waste_pump(bleach_runtime)
-        
+        wash_morb.morb.run_waste_pump(bleach_runtime + wash_time)
+        #time.sleep(wash_time)
+
+    print("Wait for waste pump to finish.")
+          
+    for pump in pumps:
         # ethanol
-        print("Swap steril water reservoir with ethanol reservoir.")
+        print("Swap steril water reservoir with ethanol reservoir: " +str(pump))
         s = raw_input("Press enter to run pumps for 5 min.")
         wash_morb.run_all_pumps(pump, wash_time)
-        wash_morb.morb.run_waste_pump(bleach_runtime)
-        # wait
-        print("Wait for 15 min.")
-        time.sleep(wait_time*3)
-        
+        wash_morb.morb.run_waste_pump(wash_time)
+
+    print("Wait for pumps to finish (15 min incubation of EtOH).")        
+    # wait
+    #print("Wait for 15 min.")
+    #time.sleep(wait_time*3)
+     
+    for pumps in pumps:
         # sterile water
-        print("Swap ethanol reservoir with steril water reservoir.")
+        print("Swap ethanol reservoir with steril water reservoir: " +str(pump))
         s = raw_input("Press enter to run pumps for 5 min.")
         wash_morb.run_all_pumps(pump, wash_time)
-        wash_morb.morb.run_waste_pump(bleach_runtime)
-        
-        # pump solution
-        print("Swap steril water reservoir with " + str(pump) 
-              + " reservoir and insert sterile filters between Luer connectors.")
-        s = raw_input("Press enter to run pumps for 5 min.")
-        wash_morb.run_all_pumps(pump, wash_time)
-        wash_morb.morb.run_waste_pump(bleach_runtime)
-        
-        # finish of a cycle
-        print("Washing of " + str(pump) + " pumps completed.")
-        s = raw_input("Press enter to continue, q to quit.")
-        if s == 'q':
-            print("Quited washing cycle.")
-            return
-        
+        wash_morb.morb.run_waste_pump(wash_time)
+    
+    time.sleep(wash_time)    
     print("Washing cycle finished.")
 
+def pump_solutions(pumps=None, vials=None):
+    ''' 
+    Function to flush tubing with sterile solutions
+    standard: all vials, all pumps
+    '''    
+    if pumps is None:
+        pumps = ['drugB', 'medium', 'drugA']
+    elif vials is None:
+        vials=range(15)
+    
+    run_time = 100
+    wash_morb = morbidostat(vials=vials)
+
+    print("Connect solutions to pumps.")
+    s = raw_input("Press enter to run pumps.")
+
+    for pump in pumps:
+        wash_morb.run_all_pumps(pump, run_time)
+        wash_morb.morb.run_waste_pump(run_time)
+        time.sleep(run_time)
+
+    print("Morbidostat is ready to use.")    
+    
 class morbidostat(object):
     '''
     Running a morbidostat experiment. 
@@ -306,7 +325,7 @@ class morbidostat(object):
         self.dilution_volume = self.culture_volume*(1.0/np.max((0.5, self.dilution_factor))-1.0)
         self.target_growth_rate = -np.log(self.dilution_factor)/self.cycle_dt
         self.pump_time = np.max([self.morb.volume_to_time('medium',vi,self.dilution_volume) for vi in self.vials])
-        self.ODs_per_cycle = (self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
+        self.ODs_per_cycle = int(self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
         self.n_vials = len(self.vials)
 
 
@@ -542,8 +561,8 @@ class morbidostat(object):
         self.morb.wait_until_mixed()
         # remove the max of the added volumes plus some safety margin. 
         # this will suck air in some vials. 
-        self.morb.remove_waste(max(self.added_volumes) + self.extra_suction)
-        
+        run_time = self.morb.remove_waste(max(self.added_volumes) + self.extra_suction)
+        self.morb.pump_off_threads[('waste pump',0)].join()
         self.temperatures[self.cycle_counter,-1] = t
         self.temperatures[self.cycle_counter,:2] = self.morb.temperatures
 
@@ -575,22 +594,23 @@ class morbidostat(object):
         the IR LEDS are switched off at the end.
         '''
         t = self.experiment_time()
-        if debug:
-            print "OD",
         self.last_OD_measurements[self.OD_measurement_counter, :] = 0
         self.morb.switch_light(True) # switch light on
         time.sleep(1.0*self.second)  # sleep for one second to allow for heating of LEDs
 
         index_vial_pairs = zip(range(len(self.vials)), self.vials)
         for rep in xrange(self.n_reps):
+            if debug:
+                print "OD rep",rep,
             for vi,vial in index_vial_pairs[::(1-2*(rep%2))]:
                 self.last_OD_measurements[self.OD_measurement_counter, vi] += self.morb.measure_OD(vial, 1, 0, False)[0]
                 if debug:
-                     print np.round(self.last_OD_measurements[self.OD_measurement_counter, vi],4)/(rep+1.0),
+                     print format(np.round(self.last_OD_measurements[self.OD_measurement_counter, vi],4)/(rep+1.0), '0.3f'),
             
+            if debug:
+	            print 
         self.last_OD_measurements[self.OD_measurement_counter, :] /= self.n_reps
-        if debug:
-            print 
+        print "OD:", ' '.join(map(str,np.round(self.last_OD_measurements[self.OD_measurement_counter, :],3)))
         self.last_OD_measurements[self.OD_measurement_counter,-1]=t
         self.morb.switch_light(False)
 
@@ -636,20 +656,13 @@ class morbidostat(object):
         # if neither OD nor growth are above thresholds, dilute with happy fluid
         if expected_growth<self.target_OD*self.max_growth_fraction and excess_OD<self.max_OD_deviation*self.target_OD:
             # if drug conc in vial is low or expected growth too negative, dilute with medium 
-            if self.vial_drug_concentration[self.cycle_counter,vi]<self.drugA_concentration or\
-                    expected_growth<self.target_OD*self.rescue_threshold:
-                tmp_decision, vol_mod = dilute_w_medium, max(0,
-                      min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
-            else: # if drug conc already high, dilute with lower concetrated drug
-                tmp_decision, vol_mod = dilute_w_drugA,max(0, 
-                      min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
+            if expected_growth<self.target_OD*self.rescue_threshold:
+                tmp_decision = dilute_w_medium
         else: # if feedback with drugs is required, dilute with one or the other drug depending on preex conc
             if self.vial_drug_concentration[self.cycle_counter, vi]<self.AB_switch_conc*self.drugA_concentration:
-                tmp_decision, vol_mod = dilute_w_drugA, max(0,
-                      min(2, 1+(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
+                tmp_decision = dilute_w_drugA
             else:
-                tmp_decision, vol_mod = dilute_w_drugB, max(0,
-                      min(2,1+(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
+                tmp_decision = dilute_w_drugB
  
         return tmp_decision
 
