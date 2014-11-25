@@ -655,20 +655,13 @@ class morbidostat(object):
         # if neither OD nor growth are above thresholds, dilute with happy fluid
         if expected_growth<self.target_OD*self.max_growth_fraction and excess_OD<self.max_OD_deviation*self.target_OD:
             # if drug conc in vial is low or expected growth too negative, dilute with medium 
-            if self.vial_drug_concentration[self.cycle_counter,vi]<self.drugA_concentration or\
-                    expected_growth<self.target_OD*self.rescue_threshold:
-                tmp_decision, vol_mod = dilute_w_medium, max(0,
-                      min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
-            else: # if drug conc already high, dilute with lower concetrated drug
-                tmp_decision, vol_mod = dilute_w_drugA,max(0, 
-                      min(2,1-(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
+            if expected_growth<self.target_OD*self.rescue_threshold:
+                tmp_decision = dilute_w_medium
         else: # if feedback with drugs is required, dilute with one or the other drug depending on preex conc
             if self.vial_drug_concentration[self.cycle_counter, vi]<self.AB_switch_conc*self.drugA_concentration:
-                tmp_decision, vol_mod = dilute_w_drugA, max(0,
-                      min(2, 1+(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
+                tmp_decision = dilute_w_drugA
             else:
-                tmp_decision, vol_mod = dilute_w_drugB, max(0,
-                      min(2,1+(self.target_OD-self.final_OD_estimate[self.cycle_counter,vi])/self.target_OD))
+                tmp_decision = dilute_w_drugB
  
         return tmp_decision
 
@@ -690,7 +683,7 @@ class morbidostat(object):
                 tmp_decision = self.standard_feedback(vial)
 
             
-            if tmp_decision[1]>0:
+            if tmp_decision[1]>1:
                 self.added_volumes[vi]=self.dilution_volume
                 self.morb.inject_volume(tmp_decision[0], vial, self.dilution_volume)
                 self.vial_drug_concentration[self.cycle_counter+1,vi] = \
