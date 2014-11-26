@@ -659,7 +659,7 @@ class morbidostat(object):
             # if drug conc in vial is low or expected growth too negative, dilute with medium 
             tmp_decision = dilute_w_medium
         else: # if feedback with drugs is required, dilute with one or the other drug depending on preex conc
-            if self.decision[self.cycle_counter-1,vial]>2:
+            if self.cycle_counter>0 and self.decision[self.cycle_counter-1,vial]<=2:
                 if self.vial_drug_concentration[self.cycle_counter, vi]<self.AB_switch_conc*self.drugA_concentration:
                     tmp_decision = dilute_w_drugA
                 else:
