@@ -655,11 +655,15 @@ class morbidostat(object):
         excess_OD = (self.final_OD_estimate[self.cycle_counter,vi]-self.target_OD)
         # if neither OD nor growth are above thresholds, dilute with happy fluid
 
+        print "vial",vial
+        print expected_growth, self.target_OD*self.max_growth_fraction
+        print excess_OD, self.max_OD_deviation*self.target_OD
+
         if expected_growth<self.target_OD*self.max_growth_fraction or excess_OD<self.max_OD_deviation*self.target_OD:
             # if drug conc in vial is low or expected growth too negative, dilute with medium 
             tmp_decision = dilute_w_medium
         else: # if feedback with drugs is required, dilute with one or the other drug depending on preex conc
-            if self.cycle_counter>0 and self.decision[self.cycle_counter-1,vial]<=2:
+            if self.cycle_counter==0 or self.decisions[self.cycle_counter-1,vi]<=2:
                 if self.vial_drug_concentration[self.cycle_counter, vi]<self.AB_switch_conc*self.drugA_concentration:
                     tmp_decision = dilute_w_drugA
                 else:

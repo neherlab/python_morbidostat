@@ -41,7 +41,7 @@ for pump_type in pumps:
                 pump_calibration_params[pump_type] = np.loadtxt(fname)
             except:
                 print "error opening pump calibration, all pump calibration parameters set to 2.4ml/min"
-            pump_calibration_params[pump_type] = 0.04*np.ones(15)
+                pump_calibration_params[pump_type] = 0.04*np.ones(15)
         else:
             print "no pump calibration file "+fname+", all pump calibration parameters set to 2.4 ml/min"
             pump_calibration_params[pump_type] = 0.04*np.ones(15)
@@ -162,8 +162,9 @@ class morbidostat:
         return vials_to_pins_assignment[vial]
 
     def voltage_to_OD(self,vi, mean_val, std_val):
-        return voltage_to_OD_params[vi,0]*mean_val+voltage_to_OD_params[vi,1], \
-            voltage_to_OD_params[vi,0]*std_val
+        ODval = voltage_to_OD_params[vi,0]*mean_val+voltage_to_OD_params[vi,1]
+        ODstd = voltage_to_OD_params[vi,0]*std_val
+        return max(ODval, 0.0001), ODstd
 
     def measure_OD(self, vial, n_measurements=1, dt=10, switch_light_off=True):
         '''
