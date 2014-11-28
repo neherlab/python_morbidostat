@@ -37,7 +37,7 @@ class morbidostat:
         '''
         return
 
-    def volume_to_time(pump_type, pump, volume):
+    def volume_to_time(self, pump_type, pump, volume):
         return 0
 
 

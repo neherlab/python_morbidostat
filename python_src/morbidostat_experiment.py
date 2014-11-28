@@ -305,10 +305,11 @@ class morbidostat(object):
         self.OD_measurement_counter = 0
         self.cycle_counter = 0
         #feedback parameters
-        self.max_growth_fraction = 0.2  # increase antibiotics with 20% OD increase per cycle
-        self.max_OD_deviation = 0.2     # increase antibiotic if 20% above target OD
-        self.AB_switch_conc = 0.3       # use high concentration if culture conc is 30% of drug A
-        #self.rescue_threshold = -0.1    # dilute culture with medium only if growth rate is 10\% below target.
+        self.max_growth_fraction = 0.05     # increase antibiotics with 5% OD increase per cycle
+        self.AB_switch_conc = 0.3          # use high concentration if culture conc is 30% of drug A
+        self.feedback_time_scale = 6       # compare antibiotic concentration to that x cycles ago
+        self.saturation_threshold = 0.22   # threshold beyond which OD can't be reliable measured 
+        self.anticipation_threshold = 0.07 # fraction of target_OD, at which increasing antibiotics is first considered
         # diagnostic variables
         self.stopped = True
         self.interrupted = False
@@ -599,17 +600,17 @@ class morbidostat(object):
         time.sleep(1.0*self.second)  # sleep for one second to allow for heating of LEDs
 
         index_vial_pairs = zip(range(len(self.vials)), self.vials)
+        tmp_OD_measurements = np.zeros((self.n_reps, len(self.vials)))
         for rep in xrange(self.n_reps):
             if debug:
                 print "OD rep",rep,
             for vi,vial in index_vial_pairs[::(1-2*(rep%2))]:
-                self.last_OD_measurements[self.OD_measurement_counter, vi] += self.morb.measure_OD(vial, 1, 0, False)[0]
+                tmp_OD_measurements[rep, vi] = self.morb.measure_OD(vial, 1, 0, False)[0]
                 if debug:
-                     print format(np.round(self.last_OD_measurements[self.OD_measurement_counter, vi],4)/(rep+1.0), '0.3f'),
-            
+                     print format(tmp_OD_measurements[rep, vi], '0.3f'),
             if debug:
 	            print 
-        self.last_OD_measurements[self.OD_measurement_counter, :] /= self.n_reps
+        self.last_OD_measurements[self.OD_measurement_counter, :-1] = np.median(tmp_OD_measurements, axis=0)
         print "OD:", ' '.join(map(str,np.round(self.last_OD_measurements[self.OD_measurement_counter, :],3)))
         self.last_OD_measurements[self.OD_measurement_counter,-1]=t
         self.morb.switch_light(False)
@@ -642,6 +643,18 @@ class morbidostat(object):
         else:
             print("morbidostat_experiment: no data")
 
+    def which_drug(self, conc, prev_conc, mic=1):
+        if conc/(prev_conc+0.5*mic)<2:  # prevent increase of antibiotics beyond a factor of 2 since base line
+            if conc<self.AB_switch_conc*min(self.drugA_concentration,self.drugB_concentration):
+                tmp_decision = dilute_w_drugA if self.drugA_concentration<self.drugB_concentration else dilute_w_drugB
+                print "dilute with low concentration (now, previous, mic):", conc, prev_conc, mic
+            else:
+                tmp_decision = dilute_w_drugB if self.drugA_concentration<self.drugB_concentration else dilute_w_drugA
+                print "dilute with high concentration (now, previous, mic):", conc, prev_conc, mic
+        else:
+            print "dilute with medium since drug concentration recently increased (now, previous, mic):", conc, prev_conc, mic
+            tmp_decision = dilute_w_medium
+        return tmp_decision
 
     def standard_feedback(self, vial):
         '''
@@ -649,27 +662,37 @@ class morbidostat(object):
         '''
         vi = self.vials.index(vial)
         # calculate the expected OD increase per cycle
-        expected_growth = (self.growth_rate_estimate[self.cycle_counter,vi]-self.target_growth_rate)*self.cycle_dt\
-                            *self.final_OD_estimate[self.cycle_counter,vi]
+        prevAB = self.vial_drug_concentration[max(self.cycle_counter-self.feedback_time_scale, 0),vi]
+        finalOD = self.final_OD_estimate[self.cycle_counter,vi]
+        deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] - self.final_OD_estimate[max(self.cycle_counter-2,0),vi])/2
+        growth_rate = self.growth_rate_estimate[self.cycle_counter,vi]
+        expected_growth = (growth_rate-self.target_growth_rate)*self.cycle_dt*finalOD
+
         # calculate the amount by which OD exceeds the target
-        excess_OD = (self.final_OD_estimate[self.cycle_counter,vi]-self.target_OD)
+        excess_OD = (finalOD-self.target_OD)
         # if neither OD nor growth are above thresholds, dilute with happy fluid
 
         print "vial",vial
         print expected_growth, self.target_OD*self.max_growth_fraction
-        print excess_OD, self.max_OD_deviation*self.target_OD
 
-        if expected_growth<self.target_OD*self.max_growth_fraction or excess_OD<self.max_OD_deviation*self.target_OD:
-            # if drug conc in vial is low or expected growth too negative, dilute with medium 
+
+        if finalOD<self.dilution_threshold:  # below the low threshold: let them grow, do nothing
+            tmp_decision = do_nothing
+        elif finalOD<self.target_OD*self.anticipation_threshold:  # intermediate OD: let them grow, but dilute with medium
             tmp_decision = dilute_w_medium
-        else: # if feedback with drugs is required, dilute with one or the other drug depending on preex conc
-            if self.cycle_counter==0 or self.decisions[self.cycle_counter-1,vi]<=2:
-                if self.vial_drug_concentration[self.cycle_counter, vi]<self.AB_switch_conc*self.drugA_concentration:
-                    tmp_decision = dilute_w_drugA
-                else:
-                    tmp_decision = dilute_w_drugB
-            else:
+        elif finalOD<self.target_OD: # approaching the target OD: increase antibiotics if they grow too fast
+            if deltaOD<self.target_OD*self.max_growth_fraction:
                 tmp_decision = dilute_w_medium
+            else:
+                tmp_decision = self.which_drug(self.vial_drug_concentration[self.cycle_counter, vi], prevAB, mic=1)
+        elif finalOD<self.saturation_threshold: # beyond target OD: give them antibiotics if they still grow
+            if deltaOD<0:
+                tmp_decision = dilute_w_medium
+            else:
+                tmp_decision = self.which_drug(self.vial_drug_concentration[self.cycle_counter, vi], prevAB, mic=1)
+        else:  # above saturation: deltaOD can't be reliably measured. give them antibiotics
+            tmp_decision = self.which_drug(self.vial_drug_concentration[self.cycle_counter, vi], prevAB, mic=1)
+
         return tmp_decision
 
     def feedback_on_OD(self):
