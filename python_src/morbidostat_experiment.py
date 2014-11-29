@@ -309,7 +309,7 @@ class morbidostat(object):
         self.AB_switch_conc = 0.3          # use high concentration if culture conc is 30% of drug A
         self.feedback_time_scale = 6       # compare antibiotic concentration to that x cycles ago
         self.saturation_threshold = 0.22   # threshold beyond which OD can't be reliable measured 
-        self.anticipation_threshold = 0.07 # fraction of target_OD, at which increasing antibiotics is first considered
+        self.anticipation_threshold = 0.7  # fraction of target_OD, at which increasing antibiotics is first considered
         # diagnostic variables
         self.stopped = True
         self.interrupted = False
