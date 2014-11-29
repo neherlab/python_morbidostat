@@ -2,6 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys,os, glob, threading, time
 #import wx
+mixing_time = 5
+buffer_time = 10
+
 
 class morbidostat_monitor(object):
     def __init__(self,dir_name):
@@ -45,9 +48,48 @@ class morbidostat_monitor(object):
             with open(self.data_dir+'parameters.dat', 'r') as params_file:
                 for line in params_file:
                     entries = line.split()
-                    if entries[0]=='vials':
-                        self.__setattr__('vials', map(int, entries[1:]))
-                        self.n_vials = len(self.vials)
+                    try:
+                        if entries[0]=='vials':
+                            self.__setattr__('vials', map(int, entries[1:]))
+                            self.n_vials = len(self.vials)
+                        elif entries[0]=='Experiment:':
+                            self.__setattr__('experiment_name', entries[1])
+                            self.__setattr__('experiment_type', entries[-1])
+                        elif entries[0]=='Strain:':
+                            self.__setattr__('bug', entries[-1])
+                        elif entries[0]=='Drugs:':
+                            self.__setattr__('drugA', entries[-2])
+                            self.__setattr__('drugB', entries[-1])
+                        elif entries[0]=='drug_concentrations:':
+                            self.__setattr__('drugA_concentration', float(entries[-2]))
+                            self.__setattr__('drugB_concentration', float(entries[-1]))
+                        elif entries[0]=='cycle_duration:':
+                            self.__setattr__('cycle_dt', int(entries[-1]))
+                        elif entries[0]=='measurements/cycle:':
+                            self.__setattr__('ODs_per_cycle', int(entries[-1]))
+                            self.__setattr__('OD_dt', int(np.ceil((self.cycle_dt-mixing_time-buffer_time)/self.ODs_per_cycle)))
+                        elif entries[0]=='experiment_start:':
+                            self.__setattr__('experiment_start', float(entries[-1]))
+                        elif entries[0]=='experiment_duration:':
+                            self.__setattr__('experiment_duration', int(entries[-1]))
+                        elif entries[0]=='dilution_factor:':
+                            self.__setattr__('dilution_factor', float(entries[-1]))
+                        elif entries[0]=='AB_switch_conc:':
+                            self.__setattr__('AB_switch_conc', float(entries[-1]))
+                        elif entries[0]=='max_AB_fold_increase:':
+                            self.__setattr__('max_AB_fold_increase', int(entries[-1]))
+                        elif entries[0]=='feedback_time_scale:':
+                            self.__setattr__('feedback_time_scale', float(entries[-1]))
+                        elif entries[0]=='anticipation_threshold:':
+                            self.__setattr__('anticipation_threshold', float(entries[-1]))
+                        elif entries[0]=='saturation_threshold:':
+                            self.__setattr__('saturation_threshold', float(entries[-1]))
+                        elif entries[0]=='dilution_threshold:':
+                            self.__setattr__('dilution_threshold', float(entries[-1]))
+                        else:
+                            print "unrecognized parameter entry:",line, entries
+                    except:
+                        print "can't parse:", line, entries
         except:
             print "can't read parameters file"
     
@@ -60,13 +102,14 @@ class morbidostat_monitor(object):
             else:
                 ncurr = 0
             OD_file_list = glob.glob(self.OD_dir+'OD_cycle*dat')
+            self.cycle_counter = len(OD_file_list)
             if len(OD_file_list) or ncurr:
-                if len(OD_file_list):
+                if self.cycle_counter:
                     tmp = np.loadtxt(OD_file_list[0])
                     self.ODs_per_cycle, ncols = tmp.shape
                 else:
                     self.ODs_per_cycle, ncols = current_cycle.shape
-                self.OD = np.zeros((len(OD_file_list)*self.ODs_per_cycle+ncurr, ncols))
+                self.OD = np.zeros((self.cycle_counter*self.ODs_per_cycle+ncurr, ncols))
                 for fname in OD_file_list:
                     cycle= int(fname.split('_')[-1][:-4])
                     if cycle<len(OD_file_list):
