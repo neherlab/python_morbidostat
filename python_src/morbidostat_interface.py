@@ -1,6 +1,7 @@
 from morbidostat_experiment import *
 import Tkinter
 import threading
+import sys
 
 
 class set_up_dialog(Tkinter.Frame):
@@ -439,6 +440,13 @@ def run_GUI(morb):
 
 if __name__ == '__main__':
     morb = morbidostat()
+    if len(sys.argv)==2:
+        dirname = sys.argv[1]
+        if not os.path.exists(dirname):
+            print "argument is not a valid directory"
+        else:
+            morb.load_parameters_file(dirname.rstrip('/')+'/parameters.dat')
+            morb.restart_from_file = dirname
     gui_thread = threading.Thread(target = run_GUI, args = (morb,))
     gui_thread.start()
     
