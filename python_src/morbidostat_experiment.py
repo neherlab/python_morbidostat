@@ -308,11 +308,11 @@ class morbidostat(object):
         #feedback parameters
         self.max_growth_fraction = 0.05     # increase antibiotics with 5% OD increase per cycle
         self.AB_switch_conc = 0.3          # use high concentration if culture conc is 30% of drug A
-        self.feedback_time_scale = 6       # compare antibiotic concentration to that x cycles ago
+        self.feedback_time_scale =  12       # compare antibiotic concentration to that x cycles ago
         self.saturation_threshold = 0.22   # threshold beyond which OD can't be reliable measured 
         self.anticipation_threshold = 0.7  # fraction of target_OD, at which increasing antibiotics is first considered
         # diagnostic variables
-        self.max_AB_fold_increase = 1.3    # maximum amount by which the antibiotic concentration is allowed to increase within the feed back time scale
+        self.max_AB_fold_increase = 1.1    # maximum amount by which the antibiotic concentration is allowed to increase within the feed back time scale
         self.mic_kd = 0.25   # fraction of the mic to which is added to low drug concentrations when calculating the AB_fold_increase
         self.stopped = True
         self.interrupted = False
@@ -736,7 +736,7 @@ class morbidostat(object):
         '''
         vi = self.vials.index(vial)
         # calculate the expected OD increase per cycle
-        prevAB = self.vial_drug_concentration[max(self.cycle_counter-self.feedback_time_scale, 0),vi]
+        prevAB = np.mean(self.vial_drug_concentration[max(self.cycle_counter-self.feedback_time_scale, 0):(self.cycle_counter+1),vi])
         finalOD = self.final_OD_estimate[self.cycle_counter,vi]
         deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] - self.final_OD_estimate[max(self.cycle_counter-2,0),vi])/2
         growth_rate = self.growth_rate_estimate[self.cycle_counter,vi]

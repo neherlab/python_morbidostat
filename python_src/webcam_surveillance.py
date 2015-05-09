@@ -11,7 +11,7 @@ parser.add_argument('--outdir', type=str, default='.', help = 'directory for out
 params=parser.parse_args()
 
 
-cams = ['video1', 'video2']
+cams = ['video3'] #, 'video3']
 dt = max(params.dt,15)  # seconds between pictures
 outdir = params.outdir.rstrip('/')+'/'
 
@@ -25,9 +25,9 @@ while pic_count<10000: # loop forever (until 10000 pictures are taken)
     now = datetime.datetime.now()
     now_str = now.strftime('%Y%m%d_%H-%M-%S')
     for cam in cams:
-        args = ['-c', '/dev/'+cam, '-o', outdir+cam+'_'+now_str+'.jpeg']
+        args = ['-c', '/dev/'+cam, '-s 640x480', '-o', outdir+cam+'_'+now_str+'.jpeg']
         subprocess.call(['streamer']+args)
-        time.sleep(5)  # allow 5 seconds for the picture taking
-    time.sleep(params.dt-5*len(cams)) # wait before taking next picture
+        time.sleep(10)  # allow 5 seconds for the picture taking
+    time.sleep(params.dt-10*len(cams)) # wait before taking next picture
     pic_count +=1 
 

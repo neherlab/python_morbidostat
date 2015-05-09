@@ -6,7 +6,7 @@ import numpy as np
 
 lok=threading.Lock()
 
-debug = False
+debug = True
 baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
 light_switch = 22 
@@ -81,6 +81,7 @@ class morbidostat:
     def atomic_serial_write(self,msg):
         with lok:
             self.ser.write(msg)
+        return len(msg)
     def atomic_serial_readline(self):
         with lok:
             return self.ser.readline()
@@ -161,10 +162,14 @@ class morbidostat:
         assert vial<15, "maximal vial number is 15, got "+str(vial)
         return vials_to_pins_assignment[vial]
 
-    def voltage_to_OD(self,vi, mean_val, std_val):
-        ODval = voltage_to_OD_params[vi,0]*mean_val+voltage_to_OD_params[vi,1]
-        ODstd = voltage_to_OD_params[vi,0]*std_val
-        return max(ODval, 0.0001), ODstd
+    def voltage_to_OD(self,vial, mean_val, std_val):
+        if mean_val is None:
+            print "got None instead of an AD output for vial",vial
+            return 0,0
+        else:
+            ODval = voltage_to_OD_params[vial,0]*mean_val+voltage_to_OD_params[vial,1]
+            ODstd = voltage_to_OD_params[vial,0]*std_val
+            return max(ODval, 0.0001), ODstd
 
     def measure_OD(self, vial, n_measurements=1, dt=10, switch_light_off=True):
         '''
