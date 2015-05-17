@@ -15,6 +15,7 @@ dilute_w_drugA = ('drugA', 3)
 dilute_w_drugB = ('drugB', 4)
 
 MORBIDOSTAT_EXPERIMENT = 'morbidostat'
+CONTINUOUS_MORBIDOSTAT = 'continuous'
 GROWTH_RATE_EXPERIMENT = 'growth_rate'
 FIXED_OD_EXPERIMENT = 'fixed_OD'
 
@@ -343,6 +344,7 @@ class morbidostat(object):
         self.OD = np.zeros((self.n_cycles, self.ODs_per_cycle, self.n_vials+1), dtype = float)
         self.temperatures = np.zeros((self.n_cycles, 3))
         self.decisions = np.zeros((self.n_cycles, self.n_vials+1), dtype = float)
+        self.dilution_concentration = np.zeros((self.n_cycles+1, self.n_vials+1), dtype = float)
         self.vial_drug_concentration = np.zeros((self.n_cycles+1, self.n_vials+1), dtype = float)
         self.vial_drug_concentration[:,-1]=np.arange(self.n_cycles+1)*self.cycle_dt
 
@@ -630,6 +632,8 @@ class morbidostat(object):
             self.dilute_to_OD()
         elif self.experiment_type==GROWTH_RATE_EXPERIMENT:
             pass
+        elif self.experiment_type==CONTINUOUS_MORBIDOSTAT:
+            self.continuous_feedback()
         else:
             print "unknown experiment type:", self.experiment_type
         self.morb.wait_until_mixed()
@@ -716,6 +720,19 @@ class morbidostat(object):
         else:
             print("morbidostat_experiment: no data")
 
+    def mix_concentration(self, conc):
+        high = max(self.drugA_concentration, self.drugB_concentration)
+        low = min(self.drugA_concentration, self.drugB_concentration)
+        if self.drugA_concentration>self.drugB_concentration:
+            high_name, low_name = 'drugA', 'drugB'
+        else:
+            high_name, low_name = 'drugB', 'drugA'
+        if conc<self.AB_switch_conc*low:
+            return {'medium': 1-conc, low_name: conc, high_name:0.0}
+        else:
+            return {'medium': min(0.5, 1-conc), high_name: max(0.5,conc), low_name:0.0}
+
+
     def which_drug(self, conc, prev_conc, mic=1):
         if conc/(prev_conc+self.mic_kd*mic)<self.max_AB_fold_increase:
             # prevent increase of antibiotics beyond a factor of max_AB_fold_increase since base line
@@ -729,6 +746,79 @@ class morbidostat(object):
             print "dilute with medium since drug concentration recently increased (now, previous, mic):", conc, prev_conc, mic
             tmp_decision = dilute_w_medium
         return tmp_decision
+
+    def inject_concentration(self, vial, volume=1.0, conc=0.0):
+        fractions = self.mix_concentration(conc)
+        vi = self.vials.index(vial)
+        for drug, frac in fractions.iteritems():
+            if frac>0:
+                self.morb.inject_volume(drug, vial, volume*frac)
+
+        self.added_volumes[vi]=np.sum(fractions.values())*volume
+
+
+    def adjust_dilution_concentration(self, vial):
+        '''
+        threshold on excess growth rate
+        '''
+        vi = self.vials.index(vial)
+        # calculate the expected OD increase per cycle
+        finalOD = self.final_OD_estimate[self.cycle_counter,vi]
+        deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] - self.final_OD_estimate[max(self.cycle_counter-2,0),vi])/2
+        growth_rate = self.growth_rate_estimate[self.cycle_counter,vi]
+        expected_growth = (growth_rate-self.target_growth_rate)*self.cycle_dt*finalOD
+
+        # calculate the amount by which OD exceeds the target
+        excess_OD = (finalOD-self.target_OD)
+        # if neither OD nor growth are above thresholds, dilute with happy fluid
+
+        print "vial",vial
+        print expected_growth, self.target_OD*self.max_growth_fraction
+
+
+        tmp_conc = self.dilution_concentration[self.cycle_counter, vi]
+        if finalOD<self.dilution_threshold:  # below the low threshold: let them grow, do nothing
+            tmp_conc = 0.1
+        elif finalOD<self.target_OD*self.anticipation_threshold:  # intermediate OD: let them grow, but dilute with medium
+            if deltaOD<0:
+                tmp_conc *= 1.0 - 1.0/self.feedback_time_scale
+        elif finalOD<self.target_OD: # approaching the target OD: increase antibiotics if they grow too fast
+            if deltaOD>self.target_OD*self.max_growth_fraction:
+                tmp_conc *= 1.0 + 0.3/self.feedback_time_scale
+            elif deltaOD<0:
+                tmp_conc *= 1.0 - 0.5/self.feedback_time_scale
+        elif finalOD<self.saturation_threshold: # beyond target OD: give them antibiotics if they still grow
+            if deltaOD<0:
+                tmp_conc *= 1.0 - 0.3/self.feedback_time_scale
+            else:
+                tmp_conc *= 1.0 + 0.5/self.feedback_time_scale
+        else:  # above saturation: deltaOD can't be reliably measured. give them antibiotics
+            tmp_conc *= 1.0 + 1.0/self.feedback_time_scale
+
+        self.dilution_concentration[self.cycle_counter+1, vi] = tmp_conc
+        
+    def continuous_feedback(self):
+        # enumerate all vials
+        for vi, vial in enumerate(self.vials):
+            self.adjust_dilution_concentration(vial)
+            if self.final_OD_estimate[self.cycle_counter,vi]>self.dilution_threshold:
+                conc = self.dilution_concentration[self.cycle_counter+1,vi]
+                self.inject_concentration(vial, conc = conc, volume = self.dilution_volume)
+                # save current drug concentration
+                self.vial_drug_concentration[self.cycle_counter+1,vi] = \
+                    self.vial_drug_concentration[self.cycle_counter,vi]*self.dilution_factor\
+                    +(1.0-self.dilution_factor)*conc
+            else:
+                self.vial_drug_concentration[self.cycle_counter+1,vi] = \
+                    self.vial_drug_concentration[self.cycle_counter,vi]
+        print 'Cycle:',self.cycle_counter, self.experiment_time()
+        print 'Growth rate (rel to target):',
+        for x in self.growth_rate_estimate[self.cycle_counter,:-1]: print '\t',np.round(x/self.target_growth_rate,2),
+        print '\nOD (rel to target):\t',
+        for x in self.final_OD_estimate[self.cycle_counter,:-1]: print '\t',np.round(x/self.target_OD,2),
+        print '\nConcentrations:\t\t',
+        for x in self.dilution_concentration[self.cycle_counter,:-1]: print '\t',x,
+        print '\n'
 
     def standard_feedback(self, vial):
         '''

@@ -188,6 +188,7 @@ class experiment_selector(Tkinter.Frame):
         self.morb = morb
 
         self.experiment_types = [("Morbidostat", MORBIDOSTAT_EXPERIMENT),
+                            ("Continuous morb", CONTINUOUS_MORBIDOSTAT),
                             ("Fixed OD", FIXED_OD_EXPERIMENT),
                             ("Growth curve", GROWTH_RATE_EXPERIMENT)]
         self.v = Tkinter.IntVar()
