@@ -25,8 +25,9 @@ while pic_count<10000: # loop forever (until 10000 pictures are taken)
     now = datetime.datetime.now()
     now_str = now.strftime('%Y%m%d_%H-%M-%S')
     camlist = glob.glob('/dev/video*')
+    camlist.remove('/dev/video0')
     for cam in camlist:
-        camname = cam.replace('/dev/', '')
+        camname = cam.replace('/dev/', '')  
         args = ['-c', cam, '-s 640x480', '-o', outdir+camname+'_'+now_str+'.jpeg']
         print ' '.join(['streamer']+args)
         subprocess.call(['streamer']+args)
