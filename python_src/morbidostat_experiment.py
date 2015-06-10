@@ -572,7 +572,6 @@ class morbidostat(object):
         experiment has to be interrupted
         '''
         if self.interrupted:
-            self.vial_drug_concentration[self.cycle_counter-1,:-1]=0
             self.vial_drug_concentration[self.cycle_counter,:-1]=0
             print "vial concentrations set to zero"
         else:
