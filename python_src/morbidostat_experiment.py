@@ -317,8 +317,12 @@ class morbidostat(object):
         self.stopped = True
         self.interrupted = False
         self.running = False
-        self.calculate_derived_values()
         self.override = False
+
+        self.n_cycles = self.experiment_duration//self.cycle_dt
+        self.n_vials = len(self.vials)
+        self.calculate_derived_values()
+        self.ODs_per_cycle = int(self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
 
 
     def calculate_derived_values(self):
@@ -337,10 +341,9 @@ class morbidostat(object):
         the duration of the experiment cannot be changed after this function is called
         '''
         self.n_cycles = self.experiment_duration//self.cycle_dt
-        self.ODs_per_cycle = int(self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
         self.n_vials = len(self.vials)
-
         self.calculate_derived_values()
+        self.ODs_per_cycle = int(self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
 
         self.OD = np.zeros((self.n_cycles, self.ODs_per_cycle, self.n_vials+1), dtype = float)
         self.temperatures = np.zeros((self.n_cycles, 3))

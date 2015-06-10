@@ -187,9 +187,9 @@ class experiment_selector(Tkinter.Frame):
         self.top.title("select experiment type")
         self.morb = morb
 
-        self.experiment_types = [("Morbidostat", MORBIDOSTAT_EXPERIMENT),
-                            ("Fixed OD", FIXED_OD_EXPERIMENT),
-                            ("Growth curve", GROWTH_RATE_EXPERIMENT)]
+        self.experiment_types = [("Morbidostat", morbi.MORBIDOSTAT_EXPERIMENT),
+                            ("Fixed OD", morbi.FIXED_OD_EXPERIMENT),
+                            ("Growth curve", morbi.GROWTH_RATE_EXPERIMENT)]
         self.v = Tkinter.IntVar()
         self.v.set(0) # initialize default choice
 
@@ -242,7 +242,7 @@ class morbidostat_interface(Tkinter.Frame):
         '''
         called upon parameters button press. opens dialog 
         '''
-        if morb.running==False or morb.interrupted:
+        if self.morb.running==False or self.morb.interrupted:
             set_up_dialog_window = set_up_dialog(self.morb)
             self.master.wait_window(set_up_dialog_window.top)
         else:
@@ -252,7 +252,7 @@ class morbidostat_interface(Tkinter.Frame):
         '''
         called in the very beginning
         '''
-        if not morb.running:
+        if not self.morb.running:
             experiment_selector_dialog = experiment_selector(self.morb)
             self.master.wait_window(experiment_selector_dialog.top)
         else:
@@ -297,7 +297,7 @@ class morbidostat_interface(Tkinter.Frame):
         '''
         self.all_good=True
         self.morb.reset_concentrations()
-        #self.update_status_strings()
+        self.update_status_strings()
 
     def status_str(self):
         '''
