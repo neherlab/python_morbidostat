@@ -1,6 +1,6 @@
 from __future__ import division
-#import arduino_interface as morb
-import morbidostat_simulator as morb
+import arduino_interface as morb
+#import morbidostat_simulator as morb
 import numpy as np
 from scipy.stats import linregress
 import time,copy,threading,os
