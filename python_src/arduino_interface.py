@@ -6,7 +6,7 @@ import numpy as np
 
 lok=threading.Lock()
 
-debug = True
+debug = False
 baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
 light_switch = 22 

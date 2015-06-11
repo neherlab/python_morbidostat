@@ -659,7 +659,9 @@ class morbidostat(object):
             else:
                 print("measure_OD_for_cycle: remaining time is negative"
                       +str(remaining_time))
+        print "last cycle:", self.last_OD_measurements
         self.OD[self.cycle_counter,:,:]=self.last_OD_measurements
+        print "saved cycle:", self.OD[self.cycle_counter,:,:]
 
     def measure_OD(self):
         '''
