@@ -1,4 +1,4 @@
-from morbidostat_experiment import *
+import morbidostat_experiment as morbi
 import Tkinter
 import threading
 import sys
@@ -187,9 +187,9 @@ class experiment_selector(Tkinter.Frame):
         self.top.title("select experiment type")
         self.morb = morb
 
-        self.experiment_types = [("Morbidostat", MORBIDOSTAT_EXPERIMENT),
-                            ("Fixed OD", FIXED_OD_EXPERIMENT),
-                            ("Growth curve", GROWTH_RATE_EXPERIMENT)]
+        self.experiment_types = [("Morbidostat", morbi.MORBIDOSTAT_EXPERIMENT),
+                            ("Fixed OD", morbi.FIXED_OD_EXPERIMENT),
+                            ("Growth curve", morbi.GROWTH_RATE_EXPERIMENT)]
         self.v = Tkinter.IntVar()
         self.v.set(0) # initialize default choice
 
@@ -242,7 +242,7 @@ class morbidostat_interface(Tkinter.Frame):
         '''
         called upon parameters button press. opens dialog 
         '''
-        if morb.running==False or morb.interrupted:
+        if self.morb.running==False or self.morb.interrupted:
             set_up_dialog_window = set_up_dialog(self.morb)
             self.master.wait_window(set_up_dialog_window.top)
         else:
@@ -252,7 +252,7 @@ class morbidostat_interface(Tkinter.Frame):
         '''
         called in the very beginning
         '''
-        if not morb.running:
+        if not self.morb.running:
             experiment_selector_dialog = experiment_selector(self.morb)
             self.master.wait_window(experiment_selector_dialog.top)
         else:
@@ -291,6 +291,13 @@ class morbidostat_interface(Tkinter.Frame):
         self.morb.resume_experiment()
         self.update_status_strings()
 
+    def reset(self):
+        '''
+        called by reset button
+        '''
+        self.all_good=True
+        self.morb.reset_concentrations()
+        self.update_status_strings()
 
     def status_str(self):
         '''
@@ -387,6 +394,8 @@ class morbidostat_interface(Tkinter.Frame):
                                    command=self.start, height = 2)
         self.interrupt_button =Tkinter.Button(self.run_time_frame, text="INTERRUPT", fg="red", 
                                   command=self.interrupt, height = 2)
+        self.reset_button =Tkinter.Button(self.run_time_frame, text="RESET CONC.", fg="black", 
+                                  command=self.reset, height = 2)
         self.resume_button = Tkinter.Button(self.run_time_frame, text="RESUME", fg="black", 
                                     command=self.resume, height = 2)
         self.quit_button = Tkinter.Button(self.run_time_frame, text="QUIT", fg="black", 
@@ -407,12 +416,13 @@ class morbidostat_interface(Tkinter.Frame):
         self.remaining_cycle_time_val.grid(row=4, column=2, columnspan=3)
 
         # arrange the buttons in one row at the bottom
-        self.set_up_button.grid(row= 6, column = 0)
-        self.refresh_button.grid(row= 6, column = 1)
-        self.start_button.grid(row= 6, column = 2)
-        self.interrupt_button.grid(row= 6, column = 3)
-        self.resume_button.grid(row= 6, column = 4)
-        self.quit_button.grid(row= 6, column = 5)
+        self.set_up_button.grid(row= 7, column = 0)
+        self.refresh_button.grid(row= 7, column = 1)
+        self.start_button.grid(row= 7, column = 2)
+        self.interrupt_button.grid(row= 7, column = 3)
+        self.reset_button.grid(row= 7, column = 4)
+        self.resume_button.grid(row= 7, column = 5)
+        self.quit_button.grid(row= 7, column = 6)
 
         # make sure all strings are uptodate
         self.open_experiment_type_selector()
@@ -439,15 +449,15 @@ def run_GUI(morb):
     root.destroy()
 
 if __name__ == '__main__':
-    morb = morbidostat()
+    mymorb = morbi.morbidostat()
     if len(sys.argv)==2:
         dirname = sys.argv[1]
         if not os.path.exists(dirname):
             print "argument is not a valid directory"
         else:
-            morb.load_parameters_file(dirname.rstrip('/')+'/parameters.dat')
-            morb.restart_from_file = dirname
-    gui_thread = threading.Thread(target = run_GUI, args = (morb,))
+            mymorb.load_parameters_file(dirname.rstrip('/')+'/parameters.dat')
+            mymorb.restart_from_file = dirname
+    gui_thread = threading.Thread(target = run_GUI, args = (mymorb,))
     gui_thread.start()
     
 
