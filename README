@@ -75,14 +75,31 @@ morb_monitor.update_all()
 git commit -a -m "A useful message explaining why this change is necessary"
 
 
+################################################################
+#
+# Pump calibration
+#
+cd python_src
+ipython --pylab
 
 
+# the latter imports the necessary functions.
+# then type
 
+pump_type = 'medium'
 
+from morbidostat_experiment import *
+mymorb = morbidostat()
+mymorb.run_all_pumps(pump_type, 200)
 
+# make sure all tubing is filled with liquid and a steady stream of drops enters each vial
+# empty all vials
 
+dt=200
 
+calibrate_pumps_parallel(mymorb, pump_type, dt=dt)
 
+# 
 
 
 
