@@ -272,7 +272,7 @@ class morbidostat(object):
     either medium or drug solution at different concentrations. 
     '''
     
-    def __init__(self, vials = range(15), experiment_duration = 2*60*60, 
+    def __init__(self, vials = range(15), experiment_duration = 24*60*60, 
                  target_OD = 0.1, dilution_factor = 0.9, bug = 'tbd', drugA ='tbd',drugB ='tbd',
                  drugA_concentration = 0.3, drugB_concentration = 2.0, OD_dt = 30, cycle_dt = 600):
         # the default experiment is a morbidostat measurement
