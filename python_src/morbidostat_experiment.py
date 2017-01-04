@@ -318,20 +318,21 @@ class morbidostat(object):
         self.stopped = True
         self.interrupted = False
         self.running = False
-        self.calculate_derived_values()
         self.override = False
+
+        self.n_cycles = self.experiment_duration//self.cycle_dt
+        self.n_vials = len(self.vials)
+        self.calculate_derived_values()
+        self.ODs_per_cycle = int(self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
 
 
     def calculate_derived_values(self):
         '''
         values calculated after other parameters are set. 
         '''
-        self.n_cycles = self.experiment_duration//self.cycle_dt
         self.dilution_volume = self.culture_volume*(1.0/np.max((0.5, self.dilution_factor))-1.0)
         self.target_growth_rate = -np.log(self.dilution_factor)/self.cycle_dt
-        self.pump_time = np.max([self.morb.volume_to_time('medium',vi,self.dilution_volume) for vi in self.vials])
-        self.ODs_per_cycle = int(self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
-        self.n_vials = len(self.vials)
+        self.pump_time = np.max([self.morb.volume_to_time('medium',vi,self.dilution_volume) for vi in self.vials])      
 
 
     def set_up(self):
@@ -340,7 +341,11 @@ class morbidostat(object):
         note that this only works for fixed experiment length. 
         the duration of the experiment cannot be changed after this function is called
         '''
+        self.n_cycles = self.experiment_duration//self.cycle_dt
+        self.n_vials = len(self.vials)
         self.calculate_derived_values()
+        self.ODs_per_cycle = int(self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
+
         self.OD = np.zeros((self.n_cycles, self.ODs_per_cycle, self.n_vials+1), dtype = float)
         self.temperatures = np.zeros((self.n_cycles, 3))
         self.decisions = np.zeros((self.n_cycles, self.n_vials+1), dtype = float)
@@ -563,6 +568,16 @@ class morbidostat(object):
         else:
             print "experiment not running"
 
+    def reset_concentrations(self):
+        '''
+        reset vial concentrations to zero, e.g. after sample taking,
+        experiment has to be interrupted
+        '''
+        if self.interrupted:
+            self.vial_drug_concentration[self.cycle_counter,:-1]=0
+            print "vial concentrations set to zero"
+        else:
+            print "experiment has to be interrupted to reset vial concentrations"
 
     def resume_experiment(self):
         '''
@@ -579,7 +594,7 @@ class morbidostat(object):
         else:
             print "experiment is not interrupted"
 
-    def run_all_pumps(self,pump_type, run_time):
+    def run_all_pumps(self, pump_type, run_time):
         '''
         run all pumps of a specified type, for example for cleaning purposes
         '''
