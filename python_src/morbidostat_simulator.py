@@ -106,19 +106,11 @@ class morbidostat:
     def remove_waste(self,volume):
         pass
 
-    def inject_volume(self, pump_type='pump1', pump_number=0, volume=0.1):
+    def inject_volume(self, pump_type='pump1', pump_number=0, volume=0.1, conc=0.0):
         '''
         mimick the running of the pumps by diluting the OD and
         changing the antibiotic concentration as appropriate
         '''
-        if pump_type=='pump2':
-            self.antibiotic[pump_number]*=(1 - volume/self.volume)
-            self.OD[pump_number]*=(1 - volume/self.volume)
-        elif pump_type=='pump1':
-            self.antibiotic[pump_number]*=(1 - volume/self.volume)
-            self.antibiotic[pump_number]+=self.concA*volume/self.volume
-            self.OD[pump_number]*=(1 - volume/self.volume)
-        elif pump_type=='pump3':
-            self.antibiotic[pump_number]*=(1 - volume/self.volume)
-            self.antibiotic[pump_number]+=self.concB*volume/self.volume
-            self.OD[pump_number]*=(1 - volume/self.volume)
+        self.antibiotic[pump_number]*=(1 - volume/self.volume)
+        self.antibiotic[pump_number]+= conc*volume/self.volume
+        self.OD[pump_number]*=(1 - volume/self.volume)
