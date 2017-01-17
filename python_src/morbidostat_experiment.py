@@ -260,13 +260,13 @@ class morbidostat(object):
 
     def __init__(self, vials = range(15), experiment_duration = 2*60*60,
                  target_OD = 0.1, dilution_factor = 0.9, bug = 'tbd', drugs =[],
-                 bottles = [], OD_dt = 30, cycle_dt = 600, experiment_name="tbd"):
+                 bottles = [], OD_dt = 30, cycle_dt = 600, experiment_name="tbd", verbose=1):
         # the default experiment is a morbidostat measurement
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
         self.second = .01
-        self.verbose=2
+        self.verbose = verbose
         # set up the morbidostat
         self.morb = morb.morbidostat()
         self.morbidostat_port = self.morb.connect()
@@ -492,9 +492,10 @@ class morbidostat(object):
         '''
         if bottle in self.bottles:
             bottle_ii = self.bottles.index(bottle)
-            self.drug_concentrations[bottle_ii]=conc
             if not initial:
-                self.historical_drug_concentrations.append((self.experiment_time(), self.drug_concentrations))
+                self.historical_drug_concentrations.append((self.experiment_time(),
+                        np.copy(self.drug_concentrations)))
+            self.drug_concentrations[bottle_ii]=conc
         else:
             print("not a valid bottle, has to be one of ", self.bottles)
 
@@ -614,7 +615,7 @@ class morbidostat(object):
         '''
         initial_cycle_count = self.cycle_counter
         for ci in xrange(initial_cycle_count, self.n_cycles):
-            if self.verbose>1:
+            if self.verbose>0:
                 print "#####################\n# Cycle",ci,"\n#####################"
             tmp_cycle_start = time.time()
             self.morbidostat_cycle()
@@ -626,7 +627,7 @@ class morbidostat(object):
                 if self.verbose>2:
                     print "run_morbidostat: remaining time", remaining_time
             else:
-                if self.verbose>1:
+                if self.verbose>2:
                     print("run_morbidostat: remaining time is negative"+str(remaining_time))
             if self.stopped or self.interrupted:
                 break
@@ -687,9 +688,14 @@ class morbidostat(object):
             if remaining_time>0:
                 time.sleep(remaining_time*self.second)
             else:
-                print("measure_OD_for_cycle: remaining time is negative"
+                if self.verbose>2:
+                    print("measure_OD_for_cycle: remaining time is negative"
                       +str(remaining_time))
         self.OD[self.cycle_counter,:,:]=self.last_OD_measurements
+        if self.verbose==1:
+            print("vial:"+ ", ".join(map(lambda x:"  v%02d"%(x+1), self.vials)))
+            print("OD:  "+ ", ".join(map(lambda x:"%1.3f"%x, self.last_OD_measurements[-1,:-1]))+'\n')
+
 
     def measure_OD(self):
         '''
@@ -714,7 +720,8 @@ class morbidostat(object):
             if self.verbose>4:
 	            print
         self.last_OD_measurements[self.OD_measurement_counter, :-1] = np.median(tmp_OD_measurements, axis=0)
-        print "OD:", ' '.join(map(str,np.round(self.last_OD_measurements[self.OD_measurement_counter, :],3)))
+        if self.verbose>2:
+            print "OD:", ' '.join(map(str,np.round(self.last_OD_measurements[self.OD_measurement_counter, :],3)))
         self.last_OD_measurements[self.OD_measurement_counter,-1]=t
         self.morb.switch_light(False)
 
@@ -736,10 +743,11 @@ class morbidostat(object):
                 if self.verbose>3:
                     print "growth vial",vial, tmp_regress[0], tmp_regress[1]
                 if tmp_regress[2]<0.5:
-                    print "morbidostat_experiment: bad fit, regression:"
-                    for q,x in zip(['slope', 'intercept', 'r-val','p-val'], np.round(tmp_regress[:4],4)):
-                        print q,'\t',x
-                    print
+                    if self.verbose>3:
+                        print "morbidostat_experiment: bad fit, regression:"
+                        for q,x in zip(['slope', 'intercept', 'r-val','p-val'], np.round(tmp_regress[:4],4)):
+                            print q,'\t',x
+                        print
             self.growth_rate_estimate[self.cycle_counter,-1]=self.experiment_time()
             self.final_OD_estimate[self.cycle_counter,-1]=self.experiment_time()
 
@@ -789,7 +797,8 @@ class morbidostat(object):
         vi = self.vials.index(vial)
         # calculate the expected OD increase per cycle
         finalOD = self.final_OD_estimate[self.cycle_counter,vi]
-        deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] - self.final_OD_estimate[max(self.cycle_counter-2,0),vi])/2
+        deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] -
+                   self.final_OD_estimate[max(self.cycle_counter-2,0),vi])/2
         growth_rate = self.growth_rate_estimate[self.cycle_counter,vi]
         expected_growth = (growth_rate-self.target_growth_rate)*self.cycle_dt*finalOD
 
@@ -832,7 +841,8 @@ class morbidostat(object):
         self.adjust_dilution_concentration(vial)
         if self.final_OD_estimate[self.cycle_counter,vi]>self.dilution_threshold:
             conc = self.dilution_concentration[self.cycle_counter+1,vi]
-            fractions = self.inject_concentration(vial, conc = conc, volume = self.dilution_volume, fi=fi)
+            fractions = self.inject_concentration(vial, conc = conc,
+                                    volume = self.dilution_volume, fi=fi)
             tmp = []
             for pump, frac in fractions.iteritems():
                 bottle = self.vial_props[vial]["bottles"][int(pump[-1])-1]
