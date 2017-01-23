@@ -1,13 +1,18 @@
 from __future__ import division
-#import arduino_interface as morb
-import morbidostat_simulator as morb
 import numpy as np
 from scipy.stats import linregress
 import time,copy,threading,os
-
 from scipy import stats
+
+simulator = False
+if simulator:
+    import morbidostat_simulator as morb
+else:
+    import arduino_interface as morb
+
 #plt.ion()
 debug = True
+
 
 MORBIDOSTAT_EXPERIMENT = 'M'
 CONTINUOUS_MORBIDOSTAT = 'C'
@@ -265,7 +270,10 @@ class morbidostat(object):
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
-        self.second = .01
+        if simulator:
+            self.second = .01
+        else:
+            self.second = 1.0
         self.verbose = verbose
         # set up the morbidostat
         self.morb = morb.morbidostat()
@@ -666,8 +674,8 @@ class morbidostat(object):
         # remove the max of the added volumes plus some safety margin.
         # this will suck air in some vials.
         run_time = self.morb.remove_waste(max(self.added_volumes) + self.extra_suction)
-        ## IMPORTANT: SWITCH BACK ON
-        #self.morb.pump_off_threads[('waste pump',0)].join()
+        if not simulator:
+            self.morb.pump_off_threads[('waste pump',0)].join()
         self.temperatures[self.cycle_counter,-1] = t
         self.temperatures[self.cycle_counter,:2] = self.morb.temperatures
 
