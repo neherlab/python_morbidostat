@@ -5,7 +5,7 @@ import threading
 import numpy as np
 
 #morb_path = '/ebio/ag-neher/share/users/bregenbogen/morbidostat/python_arduino/'
-morb_path =  '../'
+morb_path =  './'
 pump_calibration_file_base = morb_path+'python_src/pump_calibration'
 OD_calibration_file_name = morb_path+'python_src/OD_calibration.dat'
 

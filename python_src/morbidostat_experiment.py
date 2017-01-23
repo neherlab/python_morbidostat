@@ -1,10 +1,10 @@
 from __future__ import division
 import numpy as np
 from scipy.stats import linregress
-import time,copy,threading,os
+import time,copy,threading,os,sys
 from scipy import stats
 
-simulator = False
+simulator = True
 if simulator:
     import morbidostat_simulator as morb
 else:
@@ -692,6 +692,9 @@ class morbidostat(object):
             self.measure_OD()
             self.OD_measurement_counter+=1
             self.save_within_cycle_data()
+            if self.verbose==1:
+                print "OD measurement %d out of %d            \r"%(oi+1, self.ODs_per_cycle),
+                sys.stdout.flush()
             remaining_time = self.OD_dt - (time.time()-tmp_OD_measurement_start)/self.second
             if remaining_time>0:
                 time.sleep(remaining_time*self.second)
@@ -699,6 +702,8 @@ class morbidostat(object):
                 if self.verbose>2:
                     print("measure_OD_for_cycle: remaining time is negative"
                       +str(remaining_time))
+
+
         self.OD[self.cycle_counter,:,:]=self.last_OD_measurements
         if self.verbose==1:
             print("vial:"+ ", ".join(map(lambda x:"  v%02d"%(x+1), self.vials)))

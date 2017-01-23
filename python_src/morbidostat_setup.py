@@ -59,6 +59,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
             description='Instantiates a morbidostat')
     parser.add_argument('--config', required = True, type = str,  help ="CSV config file")
+    parser.add_argument('--nostart', action="store_true", default = False,
+                                    help ="start recording on launch")
     parser.add_argument('--out', required = False, type = str,  help ="outpath")
     params = parser.parse_args()
 
@@ -83,3 +85,5 @@ if __name__ == '__main__':
     for bottle in morb.bottles:
         morb.set_drug_concentrations(bottle, bottles[bottle], initial=True)
 
+    if not params.nostart:
+        morb.start_experiment()
