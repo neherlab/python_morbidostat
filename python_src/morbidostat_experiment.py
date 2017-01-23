@@ -4,14 +4,11 @@ from scipy.stats import linregress
 import time,copy,threading,os,sys
 from scipy import stats
 
-simulator = True
+simulator = False
 if simulator:
     import morbidostat_simulator as morb
 else:
     import arduino_interface as morb
-
-#plt.ion()
-debug = True
 
 
 MORBIDOSTAT_EXPERIMENT = 'M'
