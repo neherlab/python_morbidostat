@@ -4,7 +4,7 @@ from scipy.stats import linregress
 import time,copy,threading,os,sys
 from scipy import stats
 
-simulator = False
+simulator = True
 if simulator:
     import morbidostat_simulator as morb
 else:
@@ -984,7 +984,7 @@ class morbidostat(object):
             self.added_volumes[vi]=self.dilution_volume
             # dilute according to decision
             self.morb.inject_volume(pump, vial, self.dilution_volume,
-                conc=self.drug_concentrations[bottle_ii][bottle_ii])
+                conc=self.drug_concentrations[bottle_ii][fi])
             # copy the current drug concentration and dilute it
             self.update_vial_concentration(vial, self.dilution_factor, self.drug_concentrations[bottle_ii])
             # save decision
