@@ -711,19 +711,10 @@ class morbidostat(object):
                 if self.verbose>2:
                     print("measure_OD_for_cycle: remaining time is negative"
                       +str(remaining_time))
-<<<<<<< HEAD
-        print "last cycle:", self.last_OD_measurements
-        self.OD[self.cycle_counter,:,:]=self.last_OD_measurements
-        print "saved cycle:", self.OD[self.cycle_counter,:,:]
-=======
-
-
         self.OD[self.cycle_counter,:,:]=self.last_OD_measurements
         if self.verbose==1:
             print("vial:"+ ", ".join(map(lambda x:"  v%02d"%(x+1), self.vials)))
             print("OD:  "+ ", ".join(map(lambda x:"%1.3f"%x, self.last_OD_measurements[-1,:-1]))+'\n')
-
->>>>>>> github/multi_drug
 
     def measure_OD(self):
         '''
