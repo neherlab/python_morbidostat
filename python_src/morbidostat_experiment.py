@@ -4,7 +4,7 @@ from scipy.stats import linregress
 import time,copy,threading,os,sys
 from scipy import stats
 
-simulator = True
+simulator = False
 if simulator:
     import morbidostat_simulator as morb
 else:
@@ -1010,7 +1010,7 @@ class morbidostat(object):
             volume_to_add = min(10.0,(self.final_OD_estimate[self.cycle_counter,vi]-
                                    self.target_OD)*self.culture_volume/self.target_OD)
             self.added_volumes[vi]=volume_to_add
-            self.morb.inject_volume(dilute_decision[1], vial, volume_to_add, conc=0.0)
+            self.morb.inject_volume(dilute_decision[0], vial, volume_to_add, conc=0.0)
         if self.verbose>3:
             print("dilute vial %d with %1.4fml, previous OD: %1.4f"%(vial, volume_to_add, self.final_OD_estimate[self.cycle_counter,vi]))
         self.decisions[self.cycle_counter,vi] = volume_to_add
