@@ -4,15 +4,16 @@ import math
 import threading
 import numpy as np
 
-morb_path = '/ebio/ag-neher/share/users/bregenbogen/morbidostat/python_arduino/'
+#morb_path = '/ebio/ag-neher/share/users/bregenbogen/morbidostat/python_arduino/'
+morb_path =  './'
 pump_calibration_file_base = morb_path+'python_src/pump_calibration'
 OD_calibration_file_name = morb_path+'python_src/OD_calibration.dat'
 
 debug = False
 # dictionary mapping pumps to pins
-pumps = {'medium': range(7,7+15), 
-         'drugA': range(22,22+15),
-         'drugB': range(38,38+15), 'waste':3}
+pumps = {'pump2': range(7,7+15),
+         'pump1': range(22,22+15),
+         'pump3': range(38,38+15), 'waste':3}
 
 
 class morbidostat:
@@ -32,7 +33,7 @@ class morbidostat:
         self.temperatures = (37,37)
 
     def wait_until_mixed(self):
-        ''' 
+        '''
         function not needed in a simulator, included for compatibility
         '''
         return
@@ -62,7 +63,7 @@ class morbidostat:
 
     def set_up_and_start(self, OD_init=0.01, IC50_init=0.1, antibiotic_init=0, max_growth_rate_init=0.0003, final_time = 24*60*60):
         '''
-        copies initial conditions into the local arrays, sets the duration of the 
+        copies initial conditions into the local arrays, sets the duration of the
         experiments and starts it
         '''
         self.OD[:] = OD_init
@@ -76,8 +77,8 @@ class morbidostat:
 
     def evolve(self):
         '''
-        called by the evolve_thread, this function iterates until the final 
-        time is reached. it update OD via a geometric increments and changes 
+        called by the evolve_thread, this function iterates until the final
+        time is reached. it update OD via a geometric increments and changes
         the IC50 by random additive increments (this is the evolution part)
         '''
         while self.time<self.final_time and self.morbidostat_OK:
@@ -105,19 +106,11 @@ class morbidostat:
     def remove_waste(self,volume):
         pass
 
-    def inject_volume(self, pump_type='medium', pump_number=0, volume=0.1):
-        ''' 
-        mimick the running of the pumps by diluting the OD and 
+    def inject_volume(self, pump_type='pump1', pump_number=0, volume=0.1, conc=0.0):
+        '''
+        mimick the running of the pumps by diluting the OD and
         changing the antibiotic concentration as appropriate
         '''
-        if pump_type=='medium':
-            self.antibiotic[pump_number]*=(1 - volume/self.volume)
-            self.OD[pump_number]*=(1 - volume/self.volume)
-        elif pump_type=='drugA':
-            self.antibiotic[pump_number]*=(1 - volume/self.volume)
-            self.antibiotic[pump_number]+=self.concA*volume/self.volume
-            self.OD[pump_number]*=(1 - volume/self.volume)
-        elif pump_type=='drugB':
-            self.antibiotic[pump_number]*=(1 - volume/self.volume)
-            self.antibiotic[pump_number]+=self.concB*volume/self.volume
-            self.OD[pump_number]*=(1 - volume/self.volume)
+        self.antibiotic[pump_number]*=(1 - volume/self.volume)
+        self.antibiotic[pump_number]+= conc*volume/self.volume
+        self.OD[pump_number]*=(1 - volume/self.volume)
