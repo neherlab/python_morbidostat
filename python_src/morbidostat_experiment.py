@@ -7,7 +7,7 @@ import time,copy,threading,os
 
 from scipy import stats
 #plt.ion()
-debug = True
+debug = False
 
 do_nothing = ('as is',1)
 dilute_w_medium = ('medium',2)
