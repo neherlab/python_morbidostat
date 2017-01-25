@@ -7,7 +7,7 @@ buffer_time = 10
 
 
 class morbidostat_monitor(object):
-    def __init__(self,dir_name):
+    def __init__(self,dir_name, drug="colistin"):
         if os.path.exists(dir_name):
             self.data_dir = dir_name.rstrip('/')+'/'
             self.read_parameters_file()
@@ -18,6 +18,7 @@ class morbidostat_monitor(object):
             self.data_range = 60*60
             self.time_unit = (60,'m')
             plt.ioff()
+            self.drug = drug
             self.init_data_plot()
             self.figure_updater = threading.Thread(target = self.update_cycle)
             #self.figure_updater.daemon=True
@@ -127,7 +128,7 @@ class morbidostat_monitor(object):
     def load_cycle_data(self):
         if not os.path.exists(self.lock_file):
             try:
-                self.drug_concentration = np.loadtxt(self.data_dir+'vials_drug_concentrations.txt')
+                self.drug_concentration = np.loadtxt(self.data_dir+'vials_%s_concentrations.txt'%self.drug)
                 self.temperature= np.loadtxt(self.data_dir+'temperature.txt')
                 self.growth_rate_estimate = np.loadtxt(self.data_dir+'growth_rate_estimates.txt')
                 self.OD_estimate = np.loadtxt(self.data_dir+'cycle_OD_estimate.txt')

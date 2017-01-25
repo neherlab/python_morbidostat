@@ -827,7 +827,7 @@ class morbidostat(object):
 
         tmp_conc = self.dilution_concentration[self.cycle_counter, vi]
         if finalOD<self.dilution_threshold:  # below the low threshold: let them grow, do nothing
-            tmp_conc = 0.0
+            pass
         elif finalOD<self.target_OD*self.anticipation_threshold:  # intermediate OD: let them grow, but dilute with medium
             if deltaOD<0:
                 tmp_conc *= 1.0 - 1.0/self.feedback_time_scale
