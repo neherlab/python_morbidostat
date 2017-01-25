@@ -232,7 +232,7 @@ class morbidostat:
         else:
             print("Serial port is not open")
 
-    def inject_volume(self, pump_type='pump2', pump_number=0, volume=0.1):
+    def inject_volume(self, pump_type='pump2', pump_number=0, volume=0.1, conc=None):
         '''
         run a specific pump to inject a given volume
         params:

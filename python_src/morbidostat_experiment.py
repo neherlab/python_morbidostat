@@ -993,7 +993,7 @@ class morbidostat(object):
             self.added_volumes[vi]=self.dilution_volume
             # dilute according to decision
             self.morb.inject_volume(pump, vial, self.dilution_volume,
-                conc=self.drug_concentrations[bottle_ii][bottle_ii])
+                conc=self.drug_concentrations[bottle_ii][fi])
             # copy the current drug concentration and dilute it
             self.update_vial_concentration(vial, self.dilution_factor, self.drug_concentrations[bottle_ii])
             # save decision
@@ -1019,7 +1019,7 @@ class morbidostat(object):
             volume_to_add = min(10.0,(self.final_OD_estimate[self.cycle_counter,vi]-
                                    self.target_OD)*self.culture_volume/self.target_OD)
             self.added_volumes[vi]=volume_to_add
-            self.morb.inject_volume(dilute_decision[1], vial, volume_to_add, conc=0.0)
+            self.morb.inject_volume(dilute_decision[0], vial, volume_to_add, conc=0.0)
         if self.verbose>3:
             print("dilute vial %d with %1.4fml, previous OD: %1.4f"%(vial, volume_to_add, self.final_OD_estimate[self.cycle_counter,vi]))
         self.decisions[self.cycle_counter,vi] = volume_to_add
