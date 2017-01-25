@@ -273,7 +273,7 @@ class morbidostat(object):
     either medium or drug solution at different concentrations.
     '''
     def __init__(self, vials = range(15), experiment_duration = 2*60*60,
-                 target_OD = 0.1, dilution_factor = 0.9, bug = 'tbd', drugs =[],
+                 target_OD = 0.1, dilution_factor = 0.9, bug = 'tbd', drugs =[], mics=[],
                  bottles = [], OD_dt = 30, cycle_dt = 600, experiment_name="tbd", verbose=1):
         # the default experiment is a morbidostat measurement
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
@@ -309,6 +309,7 @@ class morbidostat(object):
         self.dilution_threshold = 0.03
         self.extra_suction  = 2 # extra volume that is being sucked out of the vials [ml]
         self.drugs = drugs
+        self.mics = mics
         self.ndrugs = len(drugs)
         self.nbottles = len(bottles)
         self.bottles = bottles
@@ -801,8 +802,12 @@ class morbidostat(object):
     def inject_concentration(self, vial, volume=1.0, conc=0.0, fi=0):
         fractions = self.mix_concentration(vial, conc, fi)
         vi = self.vials.index(vial)
+        if self.verbose>2:
+            print("inject_concentration: vial %d"%(vial), fractions)
         for pump, frac in fractions.iteritems():
-            if frac>0:
+            if frac>0.05:
+                if self.verbose>2:
+                    print("injecting %f1.4ml from %s into vial %d"%(volume*frac, pump, vial))
                 self.morb.inject_volume(pump, vial, volume*frac, conc=conc)
 
         self.added_volumes[vi]=np.sum(fractions.values())*volume
@@ -813,7 +818,7 @@ class morbidostat(object):
         '''
         threshold on excess growth rate
         '''
-        vi = self.vials.index(vial)
+        vi, fi = self.get_vial_and_drug_index(vial)
         # calculate the expected OD increase per cycle
         finalOD = self.final_OD_estimate[self.cycle_counter,vi]
         deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] -
@@ -825,7 +830,7 @@ class morbidostat(object):
         excess_OD = (finalOD-self.target_OD)
         # if neither OD nor growth are above thresholds, dilute with happy fluid
 
-        tmp_conc = self.dilution_concentration[self.cycle_counter, vi]
+        tmp_conc = max(0.1*self.mics[fi], self.dilution_concentration[self.cycle_counter, vi])
         if finalOD<self.dilution_threshold:  # below the low threshold: let them grow, do nothing
             pass
         elif finalOD<self.target_OD*self.anticipation_threshold:  # intermediate OD: let them grow, but dilute with medium

@@ -16,7 +16,7 @@ def parse_parameters(entries):
     return {entries[0]:float(entries[1])}
 
 def parse_drugs(entries):
-    return [entries[0], entries[1]]
+    return [entries[0], entries[1], float(entries[2])]
 
 def parse_bottles(entries):
     return {entries[0]:map(float, entries[1:])}
@@ -75,6 +75,7 @@ if __name__ == '__main__':
                        bug = parameters['bug'],
                        experiment_name = parameters['name'],
                        drugs = [x[0] for x in drugs],
+                       mics = [x[2] for x in drugs],
                        bottles = bottles.keys()
                        )
 
