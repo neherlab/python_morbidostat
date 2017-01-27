@@ -147,7 +147,7 @@ def calibrate_pumps_parallel(mymorb, pump_type, vials = None, dt = 10):
         return
 
     # loop over vials, prompt for weight
-    weight  = np.zeros((2,len(vials)))   
+    weight  = np.zeros((2,len(vials)))
     print("Put in weight of vials before pumping")
     for vi,vial in enumerate(vials):
         no_weight = True
@@ -839,6 +839,7 @@ class morbidostat(object):
         elif finalOD<self.target_OD: # approaching the target OD: increase antibiotics if they grow too fast
             if deltaOD>self.target_OD*self.max_growth_fraction:
                 tmp_conc *= 1.0 + 0.3/self.feedback_time_scale
+                tmp_conc += self.mics[fi]/self.feedback_time_scale
             elif deltaOD<0:
                 tmp_conc *= 1.0 - 0.5/self.feedback_time_scale
         elif finalOD<self.saturation_threshold: # beyond target OD: give them antibiotics if they still grow
@@ -846,8 +847,10 @@ class morbidostat(object):
                 tmp_conc *= 1.0 - 0.3/self.feedback_time_scale
             else:
                 tmp_conc *= 1.0 + 0.5/self.feedback_time_scale
+                tmp_conc += 1.5*self.mics[fi]/self.feedback_time_scale
         else:  # above saturation: deltaOD can't be reliably measured. give them antibiotics
             tmp_conc *= 1.0 + 1.0/self.feedback_time_scale
+            tmp_conc += 2.0*self.mics[fi]/self.feedback_time_scale
 
         self.dilution_concentration[self.cycle_counter+1, vi] = tmp_conc
 
