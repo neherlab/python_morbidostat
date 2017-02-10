@@ -55,7 +55,7 @@ def parse_config_table(fname):
 
 
 if __name__ == '__main__':
-    import argparse
+    import argparse, shutil
     parser = argparse.ArgumentParser(
             description='Instantiates a morbidostat')
     parser.add_argument('--config', required = True, type = str,  help ="CSV config file")
@@ -65,6 +65,8 @@ if __name__ == '__main__':
     params = parser.parse_args()
 
     parameters, drugs, vials, bottles = parse_config_table(params.config)
+
+
 
     morb = morbidostat(vials = sorted(vials.keys()),
                        experiment_duration = parameters['experiment'],
@@ -78,6 +80,7 @@ if __name__ == '__main__':
                        mics = [x[2] for x in drugs],
                        bottles = bottles.keys()
                        )
+    shutil.copy(params.config, morb.base_name+'/experiment_setup_table.csv')
 
     morb.set_vial_properties(vials)
     morb.debug=False

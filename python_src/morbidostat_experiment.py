@@ -147,7 +147,7 @@ def calibrate_pumps_parallel(mymorb, pump_type, vials = None, dt = 10):
         return
 
     # loop over vials, prompt for weight
-    weight  = np.zeros((2,len(vials)))   
+    weight  = np.zeros((2,len(vials)))
     print("Put in weight of vials before pumping")
     for vi,vial in enumerate(vials):
         no_weight = True
@@ -440,7 +440,8 @@ class morbidostat(object):
             params_file.write('vials\t'+'\t'.join(map(str,self.vials))+'\n')
             params_file.write('Experiment:\t'+self.experiment_name+'\n')
             params_file.write('Strain:\t'+self.bug+'\n')
-            params_file.write('Drugs:\t'+'\t'.join(self.drugs))
+            params_file.write('Drugs:\t'+'\t'.join(self.drugs)+'\n')
+            params_file.write('Bottles:\t'+'\t'.join(self.bottles)+'\n')
             params_file.write('drug_concentrations:\t'+'\t'.join(map(str, self.drug_concentrations))+'\n')
             params_file.write('cycle_duration:\t'+str(self.cycle_dt)+'\n')
             params_file.write('measurements/cycle:\t'+str(self.ODs_per_cycle)+'\n')
@@ -875,8 +876,11 @@ class morbidostat(object):
             injected_concentration_vector = np.sum(tmp, axis=0)
             # save current drug concentration
             self.update_vial_concentration(vial, self.dilution_factor, injected_concentration_vector)
+            self.decisions[self.cycle_counter,vi] = conc
         else:
             self.update_vial_concentration(vial, 1.0, np.zeros(2))
+            self.decisions[self.cycle_counter,vi] = -1.0
+
 
     def get_vial_bottle_concentrations(self, vial, fi):
         conc = [self.get_bottle_concentration(bottle)[fi]
@@ -897,16 +901,16 @@ class morbidostat(object):
         '''
         conc, arg_conc = self.get_vial_bottle_concentrations(vial,fi)
         pump = arg_conc[0]
-        return ("pump%d"%(pump+1), pump)
+        return ("pump%d"%(pump+1), conc[pump])
 
 
     def which_drug(self, current_conc, prev_conc, bottle_conc, pumps, mic=1):
         medium_conc = bottle_conc[pumps[1]]
         high_conc = bottle_conc[pumps[2]]
         if current_conc<self.AB_switch_conc*medium_conc:
-            tmp_decision = ("pump%s"%(1+pumps[1]), pumps[1])
+            tmp_decision = ("pump%s"%(1+pumps[1]), pumps[1], medium_conc)
         else:
-            tmp_decision = ("pump%s"%(1+pumps[2]), pumps[2])
+            tmp_decision = ("pump%s"%(1+pumps[2]), pumps[2], high_conc)
 
         return tmp_decision
 
@@ -952,7 +956,7 @@ class morbidostat(object):
             tmp_decision = inhibit_decision
 
         if self.verbose>3:
-            print("dilute vial %d with %s. current: %1.3f, previous: %1.3f"%(vial, tmp_decision[0], current_conc, prevAB))
+            print("dilute vial %d with %s. current: %1.3f, previous: %1.3f"%(vial, tmp_decision[0], current_conc, dilute_to_OD))
 
         return tmp_decision
 
@@ -975,11 +979,11 @@ class morbidostat(object):
             if s==1:
                 tmp_decision = do_nothing
             elif s==2:
-                tmp_decision = ("pump1",0)
+                tmp_decision = ("pump1",0, 0)
             elif s==3:
-                tmp_decision = ("pump2",1)
+                tmp_decision = ("pump2",1, 0)
             elif s==4:
-                tmp_decision = ("pump3",2)
+                tmp_decision = ("pump3",2, 0)
         # check dilution threshold
         elif self.final_OD_estimate[self.cycle_counter,vi]<self.dilution_threshold:
             tmp_decision = do_nothing
@@ -1002,11 +1006,12 @@ class morbidostat(object):
             # copy the current drug concentration and dilute it
             self.update_vial_concentration(vial, self.dilution_factor, self.drug_concentrations[bottle_ii])
             # save decision
-            self.decisions[self.cycle_counter,vi] = tmp_decision[1]
+            self.decisions[self.cycle_counter,vi] = tmp_decision[2]
         # do nothing
         else:
             # save current drug concentration
             self.update_vial_concentration(vial, 1.0, np.zeros(2))
+            self.decisions[self.cycle_counter,vi] = -1.0
 
 
     def dilute_to_OD(self, vial):
