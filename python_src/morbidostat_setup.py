@@ -80,7 +80,6 @@ if __name__ == '__main__':
                        mics = [x[2] for x in drugs],
                        bottles = bottles.keys()
                        )
-    shutil.copy(params.config, morb.base_name+'/experiment_setup_table.csv')
 
     morb.set_vial_properties(vials)
     morb.debug=False
@@ -91,3 +90,4 @@ if __name__ == '__main__':
 
     if not params.nostart:
         morb.start_experiment()
+        shutil.copy(params.config, morb.base_name+'/experiment_setup_table.csv')

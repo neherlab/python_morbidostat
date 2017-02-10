@@ -904,7 +904,7 @@ class morbidostat(object):
         '''
         conc, arg_conc = self.get_vial_bottle_concentrations(vial,fi)
         pump = arg_conc[0]
-        return ("pump%d"%(pump+1), conc[pump])
+        return ("pump%d"%(pump+1), pump, conc[pump])
 
 
     def which_drug(self, current_conc, prev_conc, bottle_conc, pumps, mic=1):
