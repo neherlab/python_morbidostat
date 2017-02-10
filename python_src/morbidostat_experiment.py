@@ -436,7 +436,7 @@ class morbidostat(object):
         return (time.time()-self.experiment_start)/self.second
 
     def write_parameters_file(self, ):
-        with open(self.base_name+'/parameters.dat', 'w') as params_file:
+        with open(self.base_name+'/parameters_%s.dat'%time.strftime('%Y-%m-%d_%H_%M_%S'), 'w') as params_file:
             params_file.write('vials\t'+'\t'.join(map(str,self.vials))+'\n')
             params_file.write('Experiment:\t'+self.experiment_name+'\n')
             params_file.write('Strain:\t'+self.bug+'\n')
