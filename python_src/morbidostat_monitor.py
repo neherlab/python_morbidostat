@@ -24,7 +24,7 @@ class morbidostat_monitor(object):
             #self.figure_updater.daemon=True
         else:
             print "data directory not found"
-    
+
     def start(self):
         self.continue_plotting=True
         self.figure_updater.start()
@@ -43,10 +43,11 @@ class morbidostat_monitor(object):
         self.load_cycle_data()
         self.update_plot()
         #wx.CallAfter(self.update_plot)
-       
+
     def read_parameters_file(self):
         try:
-            with open(self.data_dir+'parameters.dat', 'r') as params_file:
+            param_files = sorted(glob.glob(self.data_dir+'parameters*.dat'))
+            with open(param_files[-1], 'r') as params_file:
                 for line in params_file:
                     entries = line.split()
                     try:
@@ -93,7 +94,7 @@ class morbidostat_monitor(object):
                         print "can't parse:", line, entries
         except:
             print "can't read parameters file"
-    
+
     def load_OD_data(self):
         if not os.path.exists(self.lock_file):
             current_cycle_fname = self.OD_dir+'current_cycle.dat'
@@ -145,7 +146,7 @@ class morbidostat_monitor(object):
     def init_data_plot(self):
         '''
         this function sets up the plot of the OD and the antibiotic concentration
-        in each of the 
+        in each of the
         '''
         print "init figure"
         # there is a subplot for each vial which share axis. hence they are stacked
@@ -161,7 +162,7 @@ class morbidostat_monitor(object):
         for vi, vial  in enumerate(self.vials):
             self.subplots[vi] = [plt.subplot(n_rows, n_cols, vi+1)]
             self.subplots[vi].append(self.subplots[vi][0].twinx())
-            self.plotted_line_objects[vi] = [self.subplots[vi][0].plot([],[], c='b')[0], 
+            self.plotted_line_objects[vi] = [self.subplots[vi][0].plot([],[], c='b')[0],
                                              self.subplots[vi][1].plot([],[], c='r', marker='o')[0]]
             self.subplots[vi][0].text(0.1, 0.9, 'vial '+str(vial+1), transform=self.subplots[vi][0].transAxes)
             #       self.subplots[vi][0].plot([0,self.experiment_duration], [self.target_OD, self.target_OD], ls='--', c='k')
