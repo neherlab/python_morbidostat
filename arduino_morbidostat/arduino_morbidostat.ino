@@ -1,16 +1,16 @@
 /*
 * write analog reading to serial port
 */
-#include <OneWire.h>
+//#include <OneWire.h>
 
 int dt = 10;
 String input_string="";
 boolean string_complete=false;
 
-OneWire temp_sensors(4); //set pin 4 to be the temperature sensor 
+//OneWire temp_sensors(4); //set pin 4 to be the temperature sensor 
 byte addr1[8]={0x10,0xE8,0xB9,0xA0,0x2,0x8,0x0,0x5F};
 byte addr2[8] = {0x10,0xC1,0xB4,0xA0,0x2,0x8,0x0,0x93};
-byte OneWireData[12];
+//byte OneWireData[12];
 
 
 void setup()
@@ -21,9 +21,9 @@ void setup()
   input_string.reserve(200);
   //set up digital out pins
   int digital_pin;
-  for (digital_pin=6; digital_pin<54; digital_pin++){
+  for (digital_pin=0; digital_pin<54; digital_pin++){
     pinMode(digital_pin, OUTPUT);
-    digitalWrite(digital_pin, HIGH);    
+    digitalWrite(digital_pin, LOW);    
   }
 }
 
@@ -122,41 +122,41 @@ void serialEvent() {
 }
 
 void start_temperature_conversion(){
-    temp_sensors.reset();
-    temp_sensors.select(addr1);
-    temp_sensors.write(0x44,0);          // start conversion, with parasite power off
-    delay(10);
-
-    temp_sensors.reset();
-    temp_sensors.select(addr2);
-    temp_sensors.write(0x44,0);          // start conversion, with parasite power off
+//    temp_sensors.reset();
+//    temp_sensors.select(addr1);
+//    temp_sensors.write(0x44,0);          // start conversion, with parasite power off
+//    delay(10);
+//
+//    temp_sensors.reset();
+//    temp_sensors.select(addr2);
+//    temp_sensors.write(0x44,0);          // start conversion, with parasite power off
 }
 
 void read_temperature(){
-    float temp1,temp2;
-    int i;
-    byte present = 0;
-    present = temp_sensors.reset();
-    if (present){
-	temp_sensors.select(addr1);    
-	temp_sensors.write(0xBE);
-	for ( i = 0; i < 9; i++) {   // we need 9 bytes of data
-	    OneWireData[i] = temp_sensors.read();
-	}
-	temp1 =  ((OneWireData[1] << 8) + OneWireData[0] ) * 0.5;  // 12Bit = 0,0625 C per Bit
-    }else{temp1=0;}
-
-    present = temp_sensors.reset();
-    if (present){
-	temp_sensors.select(addr2);    
-	temp_sensors.write(0xBE);
-	for ( i = 0; i < 9; i++) {   // we need 9 bytes of data
-	    OneWireData[i] = temp_sensors.read();
-	}
-	temp2 =  ((OneWireData[1] << 8) + OneWireData[0] ) * 0.5;  // 12Bit = 0,0625 C per Bit
-    }else{
-	temp2=0;
-    }
+    float temp1=0,temp2=0;
+//    int i;
+//    byte present = 0;
+//    present = temp_sensors.reset();
+//    if (present){
+//	temp_sensors.select(addr1);    
+//	temp_sensors.write(0xBE);
+//	for ( i = 0; i < 9; i++) {   // we need 9 bytes of data
+//	    OneWireData[i] = temp_sensors.read();
+//	}
+//	temp1 =  ((OneWireData[1] << 8) + OneWireData[0] ) * 0.5;  // 12Bit = 0,0625 C per Bit
+//    }else{temp1=0;}
+//
+//    present = temp_sensors.reset();
+//    if (present){
+//	temp_sensors.select(addr2);    
+//	temp_sensors.write(0xBE);
+//	for ( i = 0; i < 9; i++) {   // we need 9 bytes of data
+//	    OneWireData[i] = temp_sensors.read();
+//	}
+//	temp2 =  ((OneWireData[1] << 8) + OneWireData[0] ) * 0.5;  // 12Bit = 0,0625 C per Bit
+//    }else{
+//	temp2=0;
+//    }
     Serial.print("T\t");
     Serial.print(temp1);
     Serial.print('\t');

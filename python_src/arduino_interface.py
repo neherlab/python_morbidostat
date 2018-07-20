@@ -13,15 +13,23 @@ light_switch = 22
 thermometer_pin = 4
 suction_pump = 3
 # dictionary mapping pumps to pins
-pumps = {'pump1': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
-         'pump3': [30,31, 32, 33,34,35, 23, 36,37, 24,25, 26,27,28,29],
-         'pump2': [53,52,51,50,49,48, 45 , 47,46, 44,43,42,41,40,39],
-#         'pump2': [41,40,39,44,43,42,45,47,46,50,49,48,53,52,51],
+pumps = {'pump1': [22, 23, 24, 25, 26,  # 1.1 - 1.5
+                   27, 28, 29, 30, 31,  # 2.1 - 2.5
+                   32, 33, 34, 35, 36], # 3.1 - 3.5
+         'pump2': [37, 38, 39, 40, 41,  # 4.1 - 4.5
+                   42, 43, 44, 45, 46,  # 5.1 - 5.5
+                   47, 48, 49, 50, 51], # 6.1 - 6.5
+         'pump3': [14, 0, 1, 2, 3,      # 7.1 - 7.5
+                   4, 5, 6, 7, 8,       # 8.1 - 8.5
+                   9, 10, 11, 12, 13],  # 9.1 - 9.5
          'waste': suction_pump}
 
 
 #vials_to_pins_assignment = [10,5,0, 11,6,1,12,7,2,13,8,3,14,9,4]
-vials_to_pins_assignment = [0,5,10,1,6,11,2,7,12,3,8,13,4,9,14]
+#vials_to_pins_assignment = [0,5,10,1,6,11,2,7,12,3,8,13,4,9,14]
+vials_to_pins_assignment = [10, 11, 12, 13, 14, #row 1
+                            5, 6, 7, 8, 9,      #row 2
+                            0, 1, 2, 3, 4]      #row 3
 
 
 ####
@@ -270,10 +278,10 @@ class morbidostat:
             digital_pin = self.pump_to_pin(pump_type, pump_number)
             if run_time>0:
                 # switch pump on
-                self.switch_pin(digital_pin, False)
+                self.switch_pin(digital_pin, True)
                 # generate a time object to switch the pump off after
                 # the time interval necessary to pump the required volume
-                self.pump_off_threads[(pump_type,pump_number)] = threading.Timer(run_time, self.switch_pin, args=(digital_pin, True))
+                self.pump_off_threads[(pump_type,pump_number)] = threading.Timer(run_time, self.switch_pin, args=(digital_pin, False))
                 self.pump_off_threads[(pump_type,pump_number)].start()
         else:
             print("Serial port is not open")
