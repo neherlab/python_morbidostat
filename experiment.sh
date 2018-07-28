@@ -1,2 +1,2 @@
 #!/bin/bash
-ipython python_src/morbidostat_interface.py -i
+ipython2 python_src/morbidostat_interface.py -i
