@@ -4,7 +4,7 @@ from scipy.stats import linregress
 import time,copy,threading,os,sys
 from scipy import stats
 
-simulator = False
+simulator = True
 if simulator:
     import morbidostat_simulator as morb
 else:
@@ -273,14 +273,14 @@ class morbidostat(object):
     either medium or drug solution at different concentrations.
     '''
     def __init__(self, vials = range(15), experiment_duration = 2*60*60,
-                 target_OD = 0.1, dilution_factor = 0.9, bug = 'tbd', drugs =[], mics=[],
+                 target_OD = 1, dilution_factor = 0.9, bug = 'tbd', drugs =[], mics=[],
                  bottles = [], OD_dt = 30, cycle_dt = 600, experiment_name="tbd", verbose=1):
         # the default experiment is a morbidostat measurement
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
         if simulator:
-            self.second = .01
+            self.second = .001
         else:
             self.second = 1.0
         self.verbose = verbose
@@ -306,7 +306,7 @@ class morbidostat(object):
         self.target_OD = target_OD
         self.culture_volume = 18 # target volume in milliliters
         self.dilution_factor = dilution_factor
-        self.dilution_threshold = 0.03
+        self.dilution_threshold = 0.1
         self.extra_suction  = 2 # extra volume that is being sucked out of the vials [ml]
         self.drugs = drugs
         self.mics = mics
@@ -329,7 +329,7 @@ class morbidostat(object):
         self.max_growth_fraction = 0.05     # increase antibiotics with 5% OD increase per cycle
         self.AB_switch_conc = 0.3          # use high concentration if culture conc is 30% of drug A
         self.feedback_time_scale =  12       # compare antibiotic concentration to that x cycles ago
-        self.saturation_threshold = 0.22   # threshold beyond which OD can't be reliable measured
+        self.saturation_threshold = 0.4   # threshold beyond which OD can't be reliable measured
         self.anticipation_threshold = 0.7  # fraction of target_OD, at which increasing antibiotics is first considered
         # diagnostic variables
         self.max_AB_fold_increase = 1.1    # maximum amount by which the antibiotic concentration is allowed to increase within the feed back time scale
@@ -579,6 +579,7 @@ class morbidostat(object):
         print "experiment has finished. disconnecting the morbidostat"
         self.morb.disconnect()
         self.running=False
+    se = stop_experiment
 
     def interrupt_experiment(self):
         '''
@@ -594,6 +595,7 @@ class morbidostat(object):
             print "recording stopped, safe to disconnect"
         else:
             print "experiment not running"
+    ie = interrupt_experiment
 
     def reset_concentrations(self):
         '''
@@ -620,6 +622,7 @@ class morbidostat(object):
             print "morbidostat restarted in cycle", self.cycle_counter
         else:
             print "experiment is not interrupted"
+    re = resume_experiment
 
     def run_all_pumps(self, pump_type, run_time):
         '''
@@ -781,12 +784,11 @@ class morbidostat(object):
         can simply try all three pairs and choose the one with the most even distribution
         of volumes
         '''
-        pairs = [[0,1], [0,2], [1,2]]
+        pairs = [[0,1]]
         bottle_conc, conc_order = self.get_vial_bottle_concentrations(vial, fi)
         fractions = np.array([(conc-bottle_conc[j])/(bottle_conc[i]-bottle_conc[j])
                       for (i,j) in pairs])
         best_choice = np.argmin(np.abs(fractions-0.5))
-
         best_pair = pairs[best_choice]
         mix = np.array([fractions[best_choice],1-fractions[best_choice]])
         if np.any(mix<0):
@@ -832,28 +834,39 @@ class morbidostat(object):
         # if neither OD nor growth are above thresholds, dilute with happy fluid
 
         tmp_conc = max(0.1*self.mics[fi], self.dilution_concentration[self.cycle_counter, vi])
+        #dilution_concentration = np.zeros((self.n_cycles+1, self.n_vials+1), dtype = float)
         if finalOD<self.dilution_threshold:  # below the low threshold: let them grow, do nothing
+            print(vi,"1")
             pass
         elif finalOD<self.target_OD*self.anticipation_threshold:  # intermediate OD: let them grow, but dilute with medium
             if deltaOD<0:
                 tmp_conc *= 1.0 - 1.0/self.feedback_time_scale
+                print(vi,"2")
         elif finalOD<self.target_OD: # approaching the target OD: increase antibiotics if they grow too fast
-            if deltaOD>self.target_OD*self.max_growth_fraction:
+            if deltaOD>=0.1*self.target_OD*self.max_growth_fraction:
                 tmp_conc *= 1.0 + 0.3/self.feedback_time_scale
                 tmp_conc += self.mics[fi]/self.feedback_time_scale
+                print(vi,"3")
             elif deltaOD<0:
                 tmp_conc *= 1.0 - 0.5/self.feedback_time_scale
+                print(vi,"4")
         elif finalOD<self.saturation_threshold: # beyond target OD: give them antibiotics if they still grow
             if deltaOD<0:
                 tmp_conc *= 1.0 - 0.3/self.feedback_time_scale
+                print(vi,"5")
             else:
                 tmp_conc *= 1.0 + 0.5/self.feedback_time_scale
                 tmp_conc += 1.5*self.mics[fi]/self.feedback_time_scale
+                print(self.feedback_time_scale)
+                print(vi,"6")
+                print("tmp_conc_6",tmp_conc)
         else:  # above saturation: deltaOD can't be reliably measured. give them antibiotics
             tmp_conc *= 1.0 + 1.0/self.feedback_time_scale
             tmp_conc += 2.0*self.mics[fi]/self.feedback_time_scale
+            print(vi,"7")
 
         self.dilution_concentration[self.cycle_counter+1, vi] = tmp_conc
+        print(tmp_conc)
 
 
     def update_vial_concentration(self, vial, dilution, conc):
@@ -867,10 +880,16 @@ class morbidostat(object):
         # enumerate all vials
         vi, fi = self.get_vial_and_drug_index(vial)
         self.adjust_dilution_concentration(vial)
+        print(vi,"8")
         if self.final_OD_estimate[self.cycle_counter,vi]>self.dilution_threshold:
             conc = self.dilution_concentration[self.cycle_counter+1,vi]
             fractions = self.inject_concentration(vial, conc = conc,
                                     volume = self.dilution_volume, fi=fi)
+            finalOD = self.final_OD_estimate[self.cycle_counter,vi]
+            deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] -
+                   self.final_OD_estimate[max(self.cycle_counter-2,0),vi])/2
+            print(vi,"9")
+            print("finalOD",finalOD,"deltaOD",deltaOD)
             tmp = []
             for pump, frac in fractions.iteritems():
                 bottle = self.vial_props[vial]["bottles"][int(pump[-1])-1]
@@ -881,8 +900,9 @@ class morbidostat(object):
             self.update_vial_concentration(vial, self.dilution_factor, injected_concentration_vector)
             self.decisions[self.cycle_counter,vi] = conc
         else:
-            self.update_vial_concentration(vial, 1.0, np.zeros(2))
+            self.update_vial_concentration(vial, 1.0, np.zeros(len(self.drugs)))
             self.decisions[self.cycle_counter,vi] = -1.0
+            print(vi,"10")
 
 
     def get_vial_bottle_concentrations(self, vial, fi):
@@ -909,7 +929,7 @@ class morbidostat(object):
 
     def which_drug(self, current_conc, prev_conc, bottle_conc, pumps, mic=1):
         medium_conc = bottle_conc[pumps[1]]
-        high_conc = bottle_conc[pumps[2]]
+        high_conc = bottle_conc[pumps[-1]]
         if current_conc<self.AB_switch_conc*medium_conc:
             tmp_decision = ("pump%s"%(1+pumps[1]), pumps[1], medium_conc)
         else:
@@ -934,8 +954,7 @@ class morbidostat(object):
         expected_growth = (growth_rate-self.target_growth_rate)*self.cycle_dt*finalOD
         # get the bottle concentrations of the relevant drug
         conc, pumps = self.get_vial_bottle_concentrations(vial, fi)
-        inhibit_decision = self.which_drug(current_conc, prevAB,
-                                           conc, pumps, mic=1)
+        inhibit_decision = self.which_drug(current_conc, prevAB, conc, pumps, mic=1)
         dilute_decision = self.lowest_concentration(vial,fi)
         # calculate the amount by which OD exceeds the target
         excess_OD = (finalOD-self.target_OD)
@@ -1013,7 +1032,7 @@ class morbidostat(object):
         # do nothing
         else:
             # save current drug concentration
-            self.update_vial_concentration(vial, 1.0, np.zeros(2))
+            self.update_vial_concentration(vial, 1.0, np.zeros(len(self.drugs)))
             self.decisions[self.cycle_counter,vi] = -1.0
 
 
