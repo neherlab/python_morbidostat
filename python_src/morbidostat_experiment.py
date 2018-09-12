@@ -326,7 +326,7 @@ class morbidostat(object):
         self.cycle_counter = 0
         self.restart_from_file=None # if a directory name, resume from there.
         #feedback parameters
-        self.max_growth_fraction = 0.05     # increase antibiotics with 5% OD increase per cycle
+        self.max_growth_fraction = 0.012     # increase antibiotics with 1.5% OD increase per cycle
         self.AB_switch_conc = 0.3          # use high concentration if culture conc is 30% of drug A
         self.feedback_time_scale =  12       # compare antibiotic concentration to that x cycles ago
         self.saturation_threshold = 0.4   # threshold beyond which OD can't be reliable measured
@@ -825,7 +825,7 @@ class morbidostat(object):
         # calculate the expected OD increase per cycle
         finalOD = self.final_OD_estimate[self.cycle_counter,vi]
         deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] -
-                   self.final_OD_estimate[max(self.cycle_counter-2,0),vi])/2
+                   self.final_OD_estimate[max(self.cycle_counter-10,0),vi])/10
         growth_rate = self.growth_rate_estimate[self.cycle_counter,vi]
         expected_growth = (growth_rate-self.target_growth_rate)*self.cycle_dt*finalOD
 
@@ -835,6 +835,7 @@ class morbidostat(object):
 
         tmp_conc = max(0.1*self.mics[fi], self.dilution_concentration[self.cycle_counter, vi])
         #dilution_concentration = np.zeros((self.n_cycles+1, self.n_vials+1), dtype = float)
+        print("finalOD",finalOD,"deltaOD",deltaOD)
         if finalOD<self.dilution_threshold:  # below the low threshold: let them grow, do nothing
             print(vi,"1")
             pass
@@ -843,13 +844,8 @@ class morbidostat(object):
                 tmp_conc *= 1.0 - 1.0/self.feedback_time_scale
                 print(vi,"2")
         elif finalOD<self.target_OD: # approaching the target OD: increase antibiotics if they grow too fast
-            if deltaOD>=0.1*self.target_OD*self.max_growth_fraction:
-                tmp_conc *= 1.0 + 0.3/self.feedback_time_scale
-                tmp_conc += self.mics[fi]/self.feedback_time_scale
-                print(vi,"3")
-            elif deltaOD<0:
-                tmp_conc *= 1.0 - 0.5/self.feedback_time_scale
-                print(vi,"4")
+            tmp_conc *=  1.0 + 3*deltaOD/self.target_OD/self.feedback_time_scale
+            tmp_conc += 3*self.mics[fi]*deltaOD/self.target_OD/self.feedback_time_scale
         elif finalOD<self.saturation_threshold: # beyond target OD: give them antibiotics if they still grow
             if deltaOD<0:
                 tmp_conc *= 1.0 - 0.3/self.feedback_time_scale
@@ -885,11 +881,6 @@ class morbidostat(object):
             conc = self.dilution_concentration[self.cycle_counter+1,vi]
             fractions = self.inject_concentration(vial, conc = conc,
                                     volume = self.dilution_volume, fi=fi)
-            finalOD = self.final_OD_estimate[self.cycle_counter,vi]
-            deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] -
-                   self.final_OD_estimate[max(self.cycle_counter-2,0),vi])/2
-            print(vi,"9")
-            print("finalOD",finalOD,"deltaOD",deltaOD)
             tmp = []
             for pump, frac in fractions.iteritems():
                 bottle = self.vial_props[vial]["bottles"][int(pump[-1])-1]
