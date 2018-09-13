@@ -61,7 +61,7 @@ class morbidostat:
         '''
         return self.max_growth_rate/(1+(self.antibiotic/self.IC50)**2)
 
-    def set_up_and_start(self, OD_init=0.01, IC50_init=0.1, antibiotic_init=0, max_growth_rate_init=0.0003, final_time = 24*60*60):
+    def set_up_and_start(self, OD_init=0.05, IC50_init=180, antibiotic_init=0, max_growth_rate_init=0.0003, final_time = 24*60*60):
         '''
         copies initial conditions into the local arrays, sets the duration of the
         experiments and starts it
