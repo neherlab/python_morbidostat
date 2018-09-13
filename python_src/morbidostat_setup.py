@@ -24,7 +24,7 @@ def parse_bottles(entries):
     return {entries[0]:map(float, entries[1:])}
 
 def parse_vials(entries):
-    return {int(entries[0])-1:{"feedback":entries[1], "bottles":entries[2:5], "feedback_drug": entries[5]}}
+    return {int(entries[0])-1:{"feedback":entries[1], "bottles":entries[2:-1], "feedback_drug": entries[-1]}}
 
 def parse_config_table(fname):
     parameters = {}
