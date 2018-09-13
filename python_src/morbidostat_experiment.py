@@ -56,7 +56,7 @@ def calibrate_OD(vials = None):
             no_valid_standard=True
 
     if len(ODs)>1:
-        print("Collected "+str(len(ODs))+" OD voltage pairs, calculating voltage -> OD conversion")
+        print("Collected "+str(len(ODs))+" OD voltage pairs, calculating voltage -> OD  conversion")
         ODs = np.array(ODs)
         voltages = np.array(voltages).T
         fit_parameters = np.zeros((len(vials), 2))
