@@ -16,9 +16,11 @@ def parse_parameters(entries):
     return {entries[0]:float(entries[1])}
 
 def parse_drugs(entries):
+    # drugname, drug unit, drug concentration
     return [entries[0], entries[1], float(entries[2])]
 
 def parse_bottles(entries):
+    # entries[0] == bottle name, followed by a list of concentrations
     return {entries[0]:map(float, entries[1:])}
 
 def parse_vials(entries):
@@ -31,7 +33,7 @@ def parse_config_table(fname):
     bottles = {}
     with open(fname) as config:
         parse_cat = None
-        for line in open(fname):
+        for line in config:
             entries = filter(lambda x:x!="", line.strip().split(','))
             if len(entries)==0:
                 continue
