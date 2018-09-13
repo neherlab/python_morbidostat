@@ -15,7 +15,7 @@ class morbidostat_monitor(object):
             self.scan_dt = 10
             self.OD_dir = self.data_dir+'OD/'
             self.lock_file = self.data_dir+'.lock'
-            self.data_range = 60*60
+            self.data_range = 60*1000000000000
             self.time_unit = (60,'m')
             plt.ioff()
             self.drug = drug
@@ -238,7 +238,8 @@ class morbidostat_monitor(object):
 if __name__ == '__main__':
     if len(sys.argv)>1:
         plt.ion()
-        morb_monitor = morbidostat_monitor(sys.argv[1])
+        print(sys.argv)
+        morb_monitor = morbidostat_monitor(sys.argv[1], drug=sys.argv[2])
         plt.show()
         morb_monitor.update_all()
         print "to refresh, type morb_monitor.update_all()"
@@ -248,3 +249,9 @@ if __name__ == '__main__':
         #morb_monitor.start()
     else:
         print "name of data directory required"
+
+
+def continuous_updating():
+    while True:
+        morb.update_plot()
+        time.sleep(10)
