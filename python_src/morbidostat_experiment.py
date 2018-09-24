@@ -822,10 +822,12 @@ class morbidostat(object):
         threshold on excess growth rate
         '''
         vi, fi = self.get_vial_and_drug_index(vial)
+
         # calculate the expected OD increase per cycle
         finalOD = self.final_OD_estimate[self.cycle_counter,vi]
+        deviationOD = finalOD - self.target_OD
         deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] -
-                   self.final_OD_estimate[max(self.cycle_counter-10,0),vi])/10
+                   self.final_OD_estimate[max(self.cycle_counter-3,0),vi])/3
         growth_rate = self.growth_rate_estimate[self.cycle_counter,vi]
         expected_growth = (growth_rate-self.target_growth_rate)*self.cycle_dt*finalOD
 
@@ -833,37 +835,21 @@ class morbidostat(object):
         excess_OD = (finalOD-self.target_OD)
         # if neither OD nor growth are above thresholds, dilute with happy fluid
 
-        tmp_conc = max(0.1*self.mics[fi], self.dilution_concentration[self.cycle_counter, vi])
+        tmp_conc =self.vial_drug_concentration[self.cycle_counter, vi]
         #dilution_concentration = np.zeros((self.n_cycles+1, self.n_vials+1), dtype = float)
-        print("finalOD",finalOD,"deltaOD",deltaOD)
+        print("finalOD",finalOD,"deltaOD",deltaOD, tmp_conc)
         if finalOD<self.dilution_threshold:  # below the low threshold: let them grow, do nothing
             print(vi,"1")
             pass
-        elif finalOD<self.target_OD*self.anticipation_threshold:  # intermediate OD: let them grow, but dilute with medium
-            if deltaOD<0:
-                tmp_conc *= 1.0 - 1.0/self.feedback_time_scale
-                print(vi,"2")
-        elif finalOD<self.target_OD: # approaching the target OD: increase antibiotics if they grow too fast
-            tmp_conc *=  1.0 + 3*deltaOD/self.target_OD/self.feedback_time_scale
-            tmp_conc += 3*self.mics[fi]*deltaOD/self.target_OD/self.feedback_time_scale
-        elif finalOD<self.saturation_threshold: # beyond target OD: give them antibiotics if they still grow
-            if deltaOD<0:
-                tmp_conc *= 1.0 - 0.3/self.feedback_time_scale
-                print(vi,"5")
+        else:
+            if deltaOD>0:
+                tmp_conc *=  1.0 + 5*deltaOD/self.target_OD/self.feedback_time_scale # + deviationOD/self.target_OD/self.feedback_time_scale
+                tmp_conc += 20*self.mics[fi]*deltaOD/self.target_OD/self.feedback_time_scale
             else:
-                tmp_conc *= 1.0 + 0.5/self.feedback_time_scale
-                tmp_conc += 1.5*self.mics[fi]/self.feedback_time_scale
-                print(self.feedback_time_scale)
-                print(vi,"6")
-                print("tmp_conc_6",tmp_conc)
-        else:  # above saturation: deltaOD can't be reliably measured. give them antibiotics
-            tmp_conc *= 1.0 + 1.0/self.feedback_time_scale
-            tmp_conc += 2.0*self.mics[fi]/self.feedback_time_scale
-            print(vi,"7")
-
+                tmp_conc =0 # *= 1.0 - 1.0/self.feedback_time_scale
+                #print("tmp_conc after 2",tmp_conc)
+                #print(vi,"2")
         self.dilution_concentration[self.cycle_counter+1, vi] = tmp_conc
-        print(tmp_conc)
-
 
     def update_vial_concentration(self, vial, dilution, conc):
         vi,fi = self.get_vial_and_drug_index(vial)
@@ -876,11 +862,11 @@ class morbidostat(object):
         # enumerate all vials
         vi, fi = self.get_vial_and_drug_index(vial)
         self.adjust_dilution_concentration(vial)
-        print(vi,"8")
         if self.final_OD_estimate[self.cycle_counter,vi]>self.dilution_threshold:
             conc = self.dilution_concentration[self.cycle_counter+1,vi]
             fractions = self.inject_concentration(vial, conc = conc,
                                     volume = self.dilution_volume, fi=fi)
+            print("conc in feedback",conc)
             tmp = []
             for pump, frac in fractions.iteritems():
                 bottle = self.vial_props[vial]["bottles"][int(pump[-1])-1]
@@ -893,7 +879,7 @@ class morbidostat(object):
         else:
             self.update_vial_concentration(vial, 1.0, np.zeros(len(self.drugs)))
             self.decisions[self.cycle_counter,vi] = -1.0
-            print(vi,"10")
+            
 
 
     def get_vial_bottle_concentrations(self, vial, fi):

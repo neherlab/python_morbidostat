@@ -251,7 +251,3 @@ if __name__ == '__main__':
         print "name of data directory required"
 
 
-def continuous_updating():
-    while True:
-        morb.update_plot()
-        time.sleep(10)
