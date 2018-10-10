@@ -4,7 +4,8 @@ from scipy.stats import linregress
 import time,copy,threading,os,sys
 from scipy import stats
 
-simulator = True
+
+simulator = False
 if simulator:
     import morbidostat_simulator as morb
 else:
@@ -338,11 +339,14 @@ class morbidostat(object):
         self.interrupted = False
         self.running = False
         self.override = False
+        self.tmp_conc = 5
+
 
         self.n_cycles = self.experiment_duration//self.cycle_dt
         self.n_vials = len(self.vials)
         self.calculate_derived_values()
         self.ODs_per_cycle = int(self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
+        
 
 
     def set_vial_properties(self, vial_dict):
@@ -784,7 +788,7 @@ class morbidostat(object):
         can simply try all three pairs and choose the one with the most even distribution
         of volumes
         '''
-        pairs = [[0,1]]
+        pairs = [[0,1],[0,2],[1,2]]
         bottle_conc, conc_order = self.get_vial_bottle_concentrations(vial, fi)
         fractions = np.array([(conc-bottle_conc[j])/(bottle_conc[i]-bottle_conc[j])
                       for (i,j) in pairs])
@@ -798,12 +802,13 @@ class morbidostat(object):
             mix[mix>1.0] = 1.0
         if self.verbose>4:
             print("desired concentration %f, will inject %f of conc %f and %f of conc %f"%(conc, mix[0], bottle_conc[best_pair[0]], mix[1], bottle_conc[best_pair[1]]))
-
-        return {'pump%d'%(p+1): frac for p, frac in zip(best_pair,mix)}
+        actual_concentration = (mix[0]*bottle_conc[best_pair[0]]+mix[1]*bottle_conc[best_pair[1]])
+        fractions = {'pump%d'%(p+1): frac for p, frac in zip(best_pair,mix)}
+        return fractions, actual_concentration
 
 
     def inject_concentration(self, vial, volume=1.0, conc=0.0, fi=0):
-        fractions = self.mix_concentration(vial, conc, fi)
+        fractions, actual_concentration = self.mix_concentration(vial, conc, fi)
         vi = self.vials.index(vial)
         if self.verbose>2:
             print("inject_concentration: vial %d"%(vial), fractions)
@@ -815,6 +820,7 @@ class morbidostat(object):
 
         self.added_volumes[vi]=np.sum(fractions.values())*volume
         return fractions
+ 
 
 
     def adjust_dilution_concentration(self, vial):
@@ -830,34 +836,30 @@ class morbidostat(object):
                    self.final_OD_estimate[max(self.cycle_counter-3,0),vi])/3
         growth_rate = self.growth_rate_estimate[self.cycle_counter,vi]
         expected_growth = (growth_rate-self.target_growth_rate)*self.cycle_dt*finalOD
-
-        # calculate the amount by which OD exceeds the target
+       # calculate the amount by which OD exceeds the target
         excess_OD = (finalOD-self.target_OD)
         # if neither OD nor growth are above thresholds, dilute with happy fluid
 
-        tmp_conc =self.vial_drug_concentration[self.cycle_counter, vi]
-        #dilution_concentration = np.zeros((self.n_cycles+1, self.n_vials+1), dtype = float)
-        print("finalOD",finalOD,"deltaOD",deltaOD, tmp_conc)
+        tmp_conc = np.copy(self.vial_drug_concentration[self.cycle_counter, vi])*10
         if finalOD<self.dilution_threshold:  # below the low threshold: let them grow, do nothing
             print(vi,"1")
             pass
         else:
             if deltaOD>0:
-                tmp_conc *=  1.0 + 5*deltaOD/self.target_OD/self.feedback_time_scale # + deviationOD/self.target_OD/self.feedback_time_scale
-                tmp_conc += 20*self.mics[fi]*deltaOD/self.target_OD/self.feedback_time_scale
+                tmp_conc *=  1.0 + 5*deltaOD/self.target_OD/self.feedback_time_scale + deviationOD/self.target_OD/self.feedback_time_scale
+                tmp_conc += 10*self.mics[fi]*deltaOD/self.target_OD/self.feedback_time_scale
             else:
-                tmp_conc =0 # *= 1.0 - 1.0/self.feedback_time_scale
-                #print("tmp_conc after 2",tmp_conc)
-                #print(vi,"2")
+                tmp_conc =0 
         self.dilution_concentration[self.cycle_counter+1, vi] = tmp_conc
+        print("tmp_conc",tmp_conc)
 
     def update_vial_concentration(self, vial, dilution, conc):
         vi,fi = self.get_vial_and_drug_index(vial)
-        self.vial_drug_concentration[self.cycle_counter+1,vi] = \
-            self.vial_drug_concentration[self.cycle_counter,vi]*dilution\
-            +(1.0-dilution)*conc
+        self.vial_drug_concentration[self.cycle_counter+1,vi] = self.vial_drug_concentration[self.cycle_counter,vi]*dilution +((1.0-dilution)*conc)
+        concentration = self.vial_drug_concentration[self.cycle_counter+1,vi] = self.vial_drug_concentration[self.cycle_counter,vi]*dilution +((1.0-dilution)*conc)
 
-
+        print("concentration", concentration)
+        
     def continuous_feedback(self, vial):
         # enumerate all vials
         vi, fi = self.get_vial_and_drug_index(vial)
@@ -866,16 +868,9 @@ class morbidostat(object):
             conc = self.dilution_concentration[self.cycle_counter+1,vi]
             fractions = self.inject_concentration(vial, conc = conc,
                                     volume = self.dilution_volume, fi=fi)
-            print("conc in feedback",conc)
-            tmp = []
-            for pump, frac in fractions.iteritems():
-                bottle = self.vial_props[vial]["bottles"][int(pump[-1])-1]
-                tmp.append(frac*self.get_bottle_concentration(bottle))
-
-            injected_concentration_vector = np.sum(tmp, axis=0)
-            # save current drug concentration
-            self.update_vial_concentration(vial, self.dilution_factor, injected_concentration_vector)
-            self.decisions[self.cycle_counter,vi] = conc
+            _, actual_concentration = self.mix_concentration(vial, conc, fi)
+            self.update_vial_concentration(vial, self.dilution_factor, actual_concentration)
+            self.decisions[self.cycle_counter,vi] = actual_concentration
         else:
             self.update_vial_concentration(vial, 1.0, np.zeros(len(self.drugs)))
             self.decisions[self.cycle_counter,vi] = -1.0
