@@ -5,7 +5,7 @@ import time,copy,threading,os,sys
 from scipy import stats
 
  
-simulator = False
+simulator = True
 if simulator:
     import morbidostat_simulator as morb
 else:
@@ -331,7 +331,7 @@ class morbidostat(object):
         self.AB_switch_conc = 0.3          # use high concentration if culture conc is 30% of drug A
         self.feedback_time_scale =  12       # compare antibiotic concentration to that x cycles ago
         self.saturation_threshold = 0.4   # threshold beyond which OD can't be reliable measured
-        self.anticipation_threshold = 0.7  # fraction of target_OD, at which increasing antibiotics is first considered
+        self.anticipation_threshold = 0.8  # fraction of target_OD, at which increasing antibiotics is first considered
         # diagnostic variables
         self.max_AB_fold_increase = 1.1    # maximum amount by which the antibiotic concentration is allowed to increase within the feed back time scale
         self.mic_kd = 0.25   # fraction of the mic to which is added to low drug concentrations when calculating the AB_fold_increase
@@ -831,40 +831,48 @@ class morbidostat(object):
 
         # calculate the expected OD increase per cycle
         finalOD = self.final_OD_estimate[self.cycle_counter,vi]
-        deviationOD = finalOD - self.target_OD
+        deviationOD = np.absolute(finalOD-self.target_OD)
         deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] -
                    self.final_OD_estimate[max(self.cycle_counter-3,0),vi])/3
-        growth_rate = self.growth_rate_estimate[self.cycle_counter,vi]
-        expected_growth = (growth_rate-self.target_growth_rate)*self.cycle_dt*finalOD
        # calculate the amount by which OD exceeds the target
         excess_OD = (finalOD-self.target_OD)
         # if neither OD nor growth are above thresholds, dilute with happy fluid
 
-        tmp_conc = np.copy(self.vial_drug_concentration[self.cycle_counter, vi])*10
+        vial_conc = np.copy(self.vial_drug_concentration[self.cycle_counter, vi])
+        print("vial_conc old",vial_conc)
+        ignore_dilution_threshold = 0
         if finalOD<self.dilution_threshold:  # below the low threshold: let them grow, do nothing
-            print(vi,"1")
             pass
+        if deltaOD>0:
+            vial_conc += self.feedback_time_scale*self.mics[fi]*deltaOD/self.target_OD
+            vial_conc *= 0.1*self.feedback_time_scale*deviationOD*deltaOD*self.mics[fi]/self.target_OD+2*deltaOD/self.target_OD*self.feedback_time_scale
+        elif finalOD<self.dilution_threshold/self.anticipation_threshold and deltaOD<0:
+            if np.copy(self.vial_drug_concentration[self.cycle_counter, vi])>0.25*self.mics[fi]:
+                vial_conc = 0
+                ignore_dilution_threshold = 1
         else:
-            if deltaOD>0:
-                tmp_conc *=  1.0 + 5*deltaOD/self.target_OD/self.feedback_time_scale + deviationOD/self.target_OD/self.feedback_time_scale
-                tmp_conc += 10*self.mics[fi]*deltaOD/self.target_OD/self.feedback_time_scale
-            else:
-                tmp_conc =0 
-        self.dilution_concentration[self.cycle_counter+1, vi] = tmp_conc
-        print("tmp_conc",tmp_conc)
+                vial_conc =0 
+        self.vial_to_inject_concentration(vial,vial_conc,vi)
+        return ignore_dilution_threshold  
+
+        
+    def vial_to_inject_concentration(self,vial,vial_conc,vi):
+        old_vial_conc = np.copy(self.vial_drug_concentration[self.cycle_counter, vi])
+        target_vial_conc = vial_conc - old_vial_conc
+        self.dilution_concentration[self.cycle_counter+1,vi] = target_vial_conc*self.culture_volume/self.dilution_volume
+        
+        
 
     def update_vial_concentration(self, vial, dilution, conc):
         vi,fi = self.get_vial_and_drug_index(vial)
         self.vial_drug_concentration[self.cycle_counter+1,vi] = self.vial_drug_concentration[self.cycle_counter,vi]*dilution +((1.0-dilution)*conc)
-        concentration = self.vial_drug_concentration[self.cycle_counter+1,vi] = self.vial_drug_concentration[self.cycle_counter,vi]*dilution +((1.0-dilution)*conc)
-
-        print("concentration", concentration)
+        
         
     def continuous_feedback(self, vial):
         # enumerate all vials
         vi, fi = self.get_vial_and_drug_index(vial)
-        self.adjust_dilution_concentration(vial)
-        if self.final_OD_estimate[self.cycle_counter,vi]>self.dilution_threshold:
+        ignore_dilution_threshold = self.adjust_dilution_concentration(vial)
+        if self.final_OD_estimate[self.cycle_counter,vi]>self.dilution_threshold or ignore_dilution_threshold == 1:
             conc = self.dilution_concentration[self.cycle_counter+1,vi]
             fractions = self.inject_concentration(vial, conc = conc,
                                     volume = self.dilution_volume, fi=fi)
