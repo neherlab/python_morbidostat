@@ -845,7 +845,7 @@ class morbidostat(object):
             pass
         if deltaOD>0:
             vial_conc += self.feedback_time_scale*self.mics[fi]*deltaOD/self.target_OD
-            vial_conc *= 0.1*self.feedback_time_scale*deviationOD*deltaOD*self.mics[fi]/self.target_OD+2*deltaOD/self.target_OD*self.feedback_time_scale
+            vial_conc *= 0.04*self.feedback_time_scale*deviationOD*deltaOD*self.mics[fi]/self.target_OD+1.7*deltaOD/self.target_OD*self.feedback_time_scale
         elif finalOD<self.dilution_threshold/self.anticipation_threshold and deltaOD<0:
             if np.copy(self.vial_drug_concentration[self.cycle_counter, vi])>0.25*self.mics[fi]:
                 vial_conc = 0
