@@ -5,7 +5,7 @@ import time,copy,threading,os,sys
 from scipy import stats
 
  
-simulator = True
+simulator = False
 if simulator:
     import morbidostat_simulator as morb
 else:
@@ -134,7 +134,7 @@ def calibrate_pumps(pump_type, vials = None, dt = 10):
     pump_rate = np.diff(weight)/dt
     np.savetxt(morb.pump_calibration_file_base+'_'+pump_type+'.dat', pump_rate)
 
-def calibrate_pumps_parallel(mymorb, pump_type, vials = None, dt = 10):
+def calibrate_pumps_parallel(mymorb, pump_type, vials = None, dt = 100):
     '''
     Routine that runs all pumps sequentially assuming the outlet is sitting on
     on a balance. after running a pump for dt seconds, the user is prompted for the weight
@@ -308,7 +308,7 @@ class morbidostat(object):
         self.culture_volume = 18 # target volume in milliliters
         self.dilution_factor = dilution_factor
         self.dilution_threshold = 0.1
-        self.extra_suction  = 2 # extra volume that is being sucked out of the vials [ml]
+        self.extra_suction  = 10 # extra volume that is being sucked out of the vials [ml]
         self.drugs = drugs
         self.mics = mics
         self.ndrugs = len(drugs)
@@ -847,7 +847,7 @@ class morbidostat(object):
             vial_conc += self.feedback_time_scale*self.mics[fi]*deltaOD/self.target_OD
             vial_conc *= 0.1*self.feedback_time_scale*deviationOD*deltaOD*self.mics[fi]/self.target_OD+2*deltaOD/self.target_OD*self.feedback_time_scale
         elif finalOD<self.dilution_threshold/self.anticipation_threshold and deltaOD<0:
-            if np.copy(self.vial_drug_concentration[self.cycle_counter, vi])>0.25*self.mics[fi]:
+            if np.copy(self.vial_drug_concentration[self.cycle_counter, vi])>0.5*self.mics[fi]:
                 vial_conc = 0
                 ignore_dilution_threshold = 1
         else:
