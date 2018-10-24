@@ -9,22 +9,6 @@ lok=threading.Lock()
 debug = False
 baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
-<<<<<<< HEAD
-light_switch = 22
-thermometer_pin = 4
-suction_pump = 3
-reset_pin = 52
-# dictionary mapping pumps to pins
-pumps = {'pump1': [22, 23, 24, 25, 26,  # 1.1 - 1.5
-                   27, 28, 29, 30, 31,  # 2.1 - 2.5
-                   32, 33, 34, 35, 36], # 3.1 - 3.5
-         'pump2': [37, 38, 39, 40, 41,  # 4.1 - 4.5
-                   42, 43, 44, 45, 46,  # 5.1 - 5.5
-                   47, 48, 49, 50, 51], # 6.1 - 6.5
-         'pump3': [14, 0, 1, 2, 3,      # 7.1 - 7.5
-                   4, 5, 6, 7, 8,       # 8.1 - 8.5
-                   9, 10, 11, 12, 13],  # 9.1 - 9.5
-=======
 reset_pin =53
 light_switch = 52
 thermometer_pin = 17
@@ -38,7 +22,6 @@ pumps = {'pump1': [22, 23, 24, 25, 26,  # 1.1 - 1.5 plug 1
          'pump3': [14, 15, 16, 2, 3,      # 7.1 - 7.5 plug 7 (pin 0,1 seem to be always high)
                    4, 5, 6, 7, 8,       # 8.1 - 8.5 plug 8
                    9, 10, 11, 12, 13],  # 9.1 - 9.5 plug 7
->>>>>>> 8bbbe3359dbe0cb99be706dea07b6e9ed8d42853
          'waste': suction_pump}
 
 
@@ -50,13 +33,7 @@ vials_to_pins_assignment = [10, 11, 12, 13, 14, #row 1
 
 
 ####
-<<<<<<< HEAD
 morb_path = '/mnt/c/Users/Eric/Documents/Master/Masterarbeit/python_morbidostat/'
-=======
-morb_path = '/'.join(os.path.realpath(__file__).split('/')[:-2])+'/'
-print(morb_path)
-#morb_path = '/home/morbidostat/python_arduino/'
->>>>>>> 8bbbe3359dbe0cb99be706dea07b6e9ed8d42853
 
 ############
 # load calibration parameters
@@ -308,18 +285,11 @@ class morbidostat:
                 self.pump_off_threads[(pump_type,pump_number)].start()
         else:
             print("Serial port is not open")
-<<<<<<< HEAD
-    def reset_arduino(self):
-        self.swith_pin(reset_pin,False)
-        time.sleep(2)
-        self.switch_pin(reset_pin,True)
-=======
     
     def reset_arduino(self):
 	command_str = 'R'+'\n'
 	self.atomic_serial_write(command_str)
 	print("RRRRRRESET")	
->>>>>>> 8bbbe3359dbe0cb99be706dea07b6e9ed8d42853
 
     def run_waste_pump(self, run_time=0.1):
         '''
