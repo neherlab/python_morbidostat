@@ -9,19 +9,19 @@ lok=threading.Lock()
 debug = False
 baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
-light_switch = 22
-thermometer_pin = 4
-suction_pump = 3
-# dictionary mapping pumps to pins
-pumps = {'pump1': [22, 23, 24, 25, 26,  # 1.1 - 1.5
-                   27, 28, 29, 30, 31,  # 2.1 - 2.5
-                   32, 33, 34, 35, 36], # 3.1 - 3.5
-         'pump2': [37, 38, 39, 40, 41,  # 4.1 - 4.5
-                   42, 43, 44, 45, 46,  # 5.1 - 5.5
-                   47, 48, 49, 50, 51], # 6.1 - 6.5
-         'pump3': [14, 0, 1, 2, 3,      # 7.1 - 7.5
-                   4, 5, 6, 7, 8,       # 8.1 - 8.5
-                   9, 10, 11, 12, 13],  # 9.1 - 9.5
+reset_pin =53
+light_switch = 52
+thermometer_pin = 17
+suction_pump = 53 #waste pump
+pumps = {'pump1': [22, 23, 24, 25, 26,  # 1.1 - 1.5 plug 1
+                   27, 28, 29, 30, 31,  # 2.1 - 2.5 plug 2
+                   32, 33, 34, 35, 36], # 3.1 - 3.5 plug 3
+         'pump2': [37, 38, 39, 40, 41,  # 4.1 - 4.5 plug 4 (pump 2 didn't switch)
+                   42, 43, 44, 45, 46,  # 5.1 - 5.5 plug 5 
+                   47, 48, 49, 50, 51], # 6.1 - 6.5 plug 6 
+         'pump3': [14, 15, 16, 2, 3,      # 7.1 - 7.5 plug 7 (pin 0,1 seem to be always high)
+                   4, 5, 6, 7, 8,       # 8.1 - 8.5 plug 8
+                   9, 10, 11, 12, 13],  # 9.1 - 9.5 plug 7
          'waste': suction_pump}
 
 
@@ -33,7 +33,9 @@ vials_to_pins_assignment = [10, 11, 12, 13, 14, #row 1
 
 
 ####
-morb_path = '/home/morbidostat/morbidostat/python_arduino/'
+morb_path = '/'.join(os.path.realpath(__file__).split('/')[:-2])+'/'
+print(morb_path)
+#morb_path = '/home/morbidostat/python_arduino/'
 
 ############
 # load calibration parameters
@@ -285,6 +287,11 @@ class morbidostat:
                 self.pump_off_threads[(pump_type,pump_number)].start()
         else:
             print("Serial port is not open")
+    
+    def reset_arduino(self):
+	command_str = 'R'+'\n'
+	self.atomic_serial_write(command_str)
+	print("RRRRRRESET")	
 
     def run_waste_pump(self, run_time=0.1):
         '''
@@ -296,10 +303,10 @@ class morbidostat:
             digital_pin = suction_pump
             if run_time>0:
                 # switch pump on
-                self.switch_pin(digital_pin, True)
+                self.switch_pin(digital_pin, False)
                 # generate a time object to switch the pump off after
                 # the time interval necessary to pump the required volume
-                self.pump_off_threads[('waste pump',0)] = threading.Timer(run_time, self.switch_pin, args=(digital_pin, False))
+                self.pump_off_threads[('waste pump',0)] = threading.Timer(run_time, self.switch_pin, args=(digital_pin, True))
                 self.pump_off_threads[('waste pump',0)].start()
         else:
             print("Serial port is not open")
@@ -330,6 +337,7 @@ class morbidostat:
                 print("pin "+str(pin_number)+" in wrong state\nArduino response")
                 print(response)
         else:
+	    self.reset_arduino()
             print("switch_pin received bad response:")
             print response
 
@@ -382,6 +390,7 @@ class morbidostat:
 # END interface class
 #################################################################
 
+"""
 def measure_self_heating(morb, vials = range(15), total_time = 180, dt = 1):
     '''
     expects and morbidostat as argument, measures voltage every
@@ -433,4 +442,5 @@ def take_temperature_profile(morb, total_time = 600, dt=10):
             temperatures[ti,0]=t
             temperatures[ti,1:] = morb.temperatures
     return temperatures
+"""
 
