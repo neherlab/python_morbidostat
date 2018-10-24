@@ -12,6 +12,7 @@ baudrate = 9600
 light_switch = 22
 thermometer_pin = 4
 suction_pump = 3
+reset_pin = 52
 # dictionary mapping pumps to pins
 pumps = {'pump1': [22, 23, 24, 25, 26,  # 1.1 - 1.5
                    27, 28, 29, 30, 31,  # 2.1 - 2.5
@@ -33,7 +34,7 @@ vials_to_pins_assignment = [10, 11, 12, 13, 14, #row 1
 
 
 ####
-morb_path = '/home/morbidostat/morbidostat/python_arduino/'
+morb_path = '/mnt/c/Users/Eric/Documents/Master/Masterarbeit/python_morbidostat/'
 
 ############
 # load calibration parameters
@@ -104,9 +105,9 @@ class morbidostat:
         port_number=0
         while try_next:
             try:
-                self.ser = serial.Serial('/dev/ttyACM'+str(port_number), baudrate, timeout = 1.0)
+                self.ser = serial.Serial('COM2',9600 ,Timeout = 1.0)
                 if self.ser.isOpen():
-                    print("Serial /dev/ttyACM"+str(port_number)+" opened")
+                    print("asdfSerial /dev/ttyACM"+str(port_number)+" opened")
                     # wait a second to let the serial port get up to speed
                     time.sleep(1)
                     self.morbidostat_OK = True
@@ -117,7 +118,7 @@ class morbidostat:
                     try_next=True
                     port_number+=1
                 else:
-                    print("Opening serial port failed")
+                    print("asdfOpening serial port failed")
                     try_next=False
                 self.morbidostat_OK = False
         return port_number
@@ -285,6 +286,10 @@ class morbidostat:
                 self.pump_off_threads[(pump_type,pump_number)].start()
         else:
             print("Serial port is not open")
+    def reset_arduino(self):
+        self.swith_pin(reset_pin,False)
+        time.sleep(2)
+        self.switch_pin(reset_pin,True)
 
     def run_waste_pump(self, run_time=0.1):
         '''
