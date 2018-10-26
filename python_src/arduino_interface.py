@@ -9,9 +9,8 @@ lok=threading.Lock()
 debug = False
 baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
-reset_pin =53
 light_switch = 52
-thermometer_pin = 17
+thermometer_pin = 18
 suction_pump = 53 #waste pump
 pumps = {'pump1': [22, 23, 24, 25, 26,  # 1.1 - 1.5 plug 1
                    27, 28, 29, 30, 31,  # 2.1 - 2.5 plug 2
