@@ -78,7 +78,12 @@ void switch_digital(){
   Serial.print('\t');
   Serial.println(pin_state);
 }
-
+void reset_arduino(uint8_t prescaller) {
+  uint32_t resetTime = millis() + prescaller;
+  while (resetTime > millis()) {
+    digitalWrite(17,LOW);
+  }
+}
 void loop()
 {
   if (string_complete){
@@ -87,6 +92,7 @@ void loop()
     case 'D': {switch_digital(); break;} 
     case 'C': {start_temperature_conversion(); break;}
     case 'T': {read_temperature(); break;}
+    case 'R': {reset_arduino(60); break; }
     default: {Serial.println("error: unknown command"); break;}
     }  
     input_string="";
