@@ -5,7 +5,7 @@ import time,copy,threading,os,sys
 from scipy import stats
 
  
-simulator = False
+simulator = True
 if simulator:
     import morbidostat_simulator as morb
 else:
@@ -91,50 +91,7 @@ def calibrate_OD(vials = None):
         print("need measurements for at least two OD standards")
     return fit_parameters, ODs, voltages
 
-def calibrate_pumps(pump_type, vials = None, dt = 10):
-    '''
-    Routine that runs all pumps sequentially assuming the outlet is sitting on
-    on a balance. after running a pump for dt seconds, the user is prompted for the weight
-    until all 15 pumps have been run
-    '''
-    if vials is None:
-        vials = range(15)
-    calibration_morb = morb.morbidostat()
-    print("Upon pressing enter, each pump will be run for "+str(dt)+" seconds.")
-    print("Before each pump, you will be prompted for the weight of the current set-up.")
-    s = raw_input("press enter to start, q to stop: ")
-    if len(s)>0:
-        print("Aborting calibration")
-        return
-
-    # loop over vials, prompt for weight
-    weight  = np.zeros(len(vials)+1)
-    for vi,vial in enumerate(vials):
-        no_weight = True
-        while no_weight:
-            s = raw_input('current weight: ')
-            try:
-                weight[vi] =float(s)
-                no_weight = False
-            except:
-                print("invalid weight")
-        calibration_morb.run_pump(pump_type, vial,run_time=dt)
-
-    # get final weight
-    no_weight = True
-    while no_weight:
-        s = raw_input('final weight: ')
-        try:
-            weight[-1] =float(s)
-            no_weight = False
-        except:
-            print("invalid weight")
-
-    # calculate pump_rate and save to file
-    pump_rate = np.diff(weight)/dt
-    np.savetxt(morb.pump_calibration_file_base+'_'+pump_type+'.dat', pump_rate)
-
-def calibrate_pumps_parallel(mymorb, pump_type, vials = None, dt = 100):
+def calibrate_pumps(mymorb, pump_type, vials = None, dt = 100):
     '''
     Routine that runs all pumps sequentially assuming the outlet is sitting on
     on a balance. after running a pump for dt seconds, the user is prompted for the weight
@@ -176,94 +133,6 @@ def calibrate_pumps_parallel(mymorb, pump_type, vials = None, dt = 100):
     # calculate pump_rate and save to file
     pump_rate = (weight[1]-weight[0])/dt
     np.savetxt(morb.pump_calibration_file_base+'_'+pump_type+'.dat', pump_rate)
-
-def wash_tubing(pumps=None, bleach_runtime=None, vials=None):
-    '''
-    Washing routine to sterilize all tubing. Valid arguments are pumps as an array and
-    bleach_time in seconds. Without arguments standard is used.
-    - pumps: medium, drugA and drugB
-    - bleach_runtime: 300 (= 5 min)
-    '''
-
-    # standard
-    if pumps is None:
-        pumps = ['pump1', 'pump2', 'pump3']
-    elif bleach_runtime is None:
-        bleach_runtime = 300
-
-    if vials is None:
-        vials=range(15)
-
-    wash_time = 300
-    wait_time = 300
-    wash_morb = morbidostat(vials=vials)
-    print("Starting sterilization of tubing...")
-
-    # washing cycle
-    for pump in pumps:
-        # bleach
-        print("Connect bleach reservoir to " +str(pump)
-              + " pumps and spray ethanol on all Luer connectors.")
-        s = raw_input("Press enter to run pumps for " + str(bleach_runtime) + " seconds.")
-        wash_morb.run_all_pumps(pump, bleach_runtime)
-        print("Wait until pumping is finished...")
-        time.sleep(bleach_runtime)
-        # wait
-        print("Wait for 5 min.")
-        time.sleep(wait_time)
-        # sterile water
-        print("Swap bleach reservoir with steril water reservoir: " +str(pump))
-        s = raw_input("Press enter to run pumps for 5 min.")
-        wash_morb.run_all_pumps(pump, wash_time)
-        wash_morb.morb.run_waste_pump(bleach_runtime + wash_time)
-        #time.sleep(wash_time)
-
-    print("Wait for waste pump to finish.")
-
-    for pump in pumps:
-        # ethanol
-        print("Swap steril water reservoir with ethanol reservoir: " +str(pump))
-        s = raw_input("Press enter to run pumps for 5 min.")
-        wash_morb.run_all_pumps(pump, wash_time)
-        wash_morb.morb.run_waste_pump(wash_time)
-
-    print("Wait for pumps to finish (15 min incubation of EtOH).")
-    # wait
-    #print("Wait for 15 min.")
-    #time.sleep(wait_time*3)
-
-    for pumps in pumps:
-        # sterile water
-        print("Swap ethanol reservoir with steril water reservoir: " +str(pump))
-        s = raw_input("Press enter to run pumps for 5 min.")
-        wash_morb.run_all_pumps(pump, wash_time)
-        wash_morb.morb.run_waste_pump(wash_time)
-
-    time.sleep(wash_time)
-    print("Washing cycle finished.")
-
-def pump_solutions(pumps=None, vials=None):
-    '''
-    Function to flush tubing with sterile solutions
-    standard: all vials, all pumps
-    '''
-    if pumps is None:
-        pumps = ['pump1', 'pump2', 'pump3']
-    elif vials is None:
-        vials=range(15)
-
-    run_time = 100
-    wash_morb = morbidostat(vials=vials)
-
-    print("Connect solutions to pumps.")
-    s = raw_input("Press enter to run pumps.")
-
-    for pump in pumps:
-        wash_morb.run_all_pumps(pump, run_time)
-        wash_morb.morb.run_waste_pump(run_time)
-        time.sleep(run_time)
-
-    print("Morbidostat is ready to use.")
 
 class morbidostat(object):
     '''
@@ -307,6 +176,7 @@ class morbidostat(object):
         self.target_OD = target_OD
         self.culture_volume = 18 # target volume in milliliters
         self.dilution_factor = dilution_factor
+        self.drug_injection_count = [0]*len(vials)
         self.dilution_threshold = 0.1
         self.extra_suction  = 10 # extra volume that is being sucked out of the vials [ml]
         self.drugs = drugs
@@ -331,7 +201,7 @@ class morbidostat(object):
         self.AB_switch_conc = 0.3          # use high concentration if culture conc is 30% of drug A
         self.feedback_time_scale =  12       # compare antibiotic concentration to that x cycles ago
         self.saturation_threshold = 0.4   # threshold beyond which OD can't be reliable measured
-        self.anticipation_threshold = 0.8  # fraction of target_OD, at which increasing antibiotics is first considered
+        self.anticipation_threshold = 0.9  # fraction of target_OD, at which increasing antibiotics is first considered
         # diagnostic variables
         self.max_AB_fold_increase = 1.1    # maximum amount by which the antibiotic concentration is allowed to increase within the feed back time scale
         self.mic_kd = 0.25   # fraction of the mic to which is added to low drug concentrations when calculating the AB_fold_increase
@@ -340,8 +210,10 @@ class morbidostat(object):
         self.running = False
         self.override = False
         self.tmp_conc = 5
-
-
+        self.start_conc = np.zeros((30,len(vials)))
+        self.deviation = np.zeros((30,len(vials)))
+        self.deltaod = np.zeros((30,len(vials)))
+        self.multiplication = np.zeros((30,len(vials)))
         self.n_cycles = self.experiment_duration//self.cycle_dt
         self.n_vials = len(self.vials)
         self.calculate_derived_values()
@@ -824,43 +696,56 @@ class morbidostat(object):
 
 
     def adjust_dilution_concentration(self, vial):
-        '''
-        threshold on excess growth rate
-        '''
         vi, fi = self.get_vial_and_drug_index(vial)
-
-        # calculate the expected OD increase per cycle
+        
+        # calculate the expected OD increase per cycle and by how much the expectect OD is over the target OD
         finalOD = self.final_OD_estimate[self.cycle_counter,vi]
-        deviationOD = np.absolute(finalOD-self.target_OD)
         deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] -
-                   self.final_OD_estimate[max(self.cycle_counter-3,0),vi])/3
-       # calculate the amount by which OD exceeds the target
-        excess_OD = (finalOD-self.target_OD)
-        # if neither OD nor growth are above thresholds, dilute with happy fluid
+                   self.final_OD_estimate[max(self.cycle_counter-10,0),vi])/10
 
+        # feedback is based on the current drug concentration in the vial
         vial_conc = np.copy(self.vial_drug_concentration[self.cycle_counter, vi])
-        print("vial_conc old",vial_conc)
-        ignore_dilution_threshold = 0
-        if finalOD<self.dilution_threshold:  # below the low threshold: let them grow, do nothing
-            pass
-        if deltaOD>0:
-            vial_conc += self.feedback_time_scale*self.mics[fi]*deltaOD/self.target_OD
-            vial_conc *= 0.04*self.feedback_time_scale*deviationOD*deltaOD*self.mics[fi]/self.target_OD+1.7*deltaOD/self.target_OD*self.feedback_time_scale
-        elif finalOD<self.dilution_threshold/self.anticipation_threshold and deltaOD<0:
-            if np.copy(self.vial_drug_concentration[self.cycle_counter, vi])>0.5*self.mics[fi]:
+        print('vial_conc',vial_conc)
+        ignore_dilution_threshold = False # necessary in order that diluting high drug concentration works below dilution threshold
+
+        # start of the feedback
+        # calculating of drug concentration only above the dilution threshold
+        # but also makes sure that dilution of high drug concentration works
+        if finalOD<self.dilution_threshold:
+            if deltaOD<0 and self.vial_drug_concentration[self.cycle_counter, vi]>0.5*self.mics[fi]:
                 vial_conc = 0
-                ignore_dilution_threshold = 1
+                ignore_dilution_threshold = True
+                
+
+        # calculates drug concentration when bacteria are growing and OD is above dilution threshold
+        elif deltaOD>0:
+            # calculation of start concentration =
+            previous_concentrations = np.copy(self.vial_drug_concentration[self.cycle_counter-3:self.cycle_counter-1,vi])
+            if sum(previous_concentrations)<1.2*self.mics[fi]:
+                vial_conc += 0.8*self.mics[fi]
+
+            # caclulation of drug concentration accodring to the growth
+            vial_conc *= 1.0 + 1.5*deltaOD*self.mics[fi]/self.target_OD/self.feedback_time_scale
+
+            # when they are still growing and exceed the anticipation threshold 10% of the drug vial_concentratio gets added            
+            if finalOD>self.target_OD*self.anticipation_threshold:
+                vial_conc += 0.1*vial_conc
+
+        # when they are dieing media gets added
         else:
-                vial_conc =0 
+            vial_conc =0 
+
         self.vial_to_inject_concentration(vial,vial_conc,vi)
         return ignore_dilution_threshold  
 
         
     def vial_to_inject_concentration(self,vial,vial_conc,vi):
+        # current concentration in vial
         old_vial_conc = np.copy(self.vial_drug_concentration[self.cycle_counter, vi])
-        target_vial_conc = vial_conc - old_vial_conc
-        self.dilution_concentration[self.cycle_counter+1,vi] = target_vial_conc*self.culture_volume/self.dilution_volume
-        
+        # difference of calculated concentration in adjust_concentration and the current vial concentration
+        conc_difference = vial_conc - old_vial_conc
+        # calculating how much drug needs to be added in order to achieve the cacluated concentration
+        self.dilution_concentration[self.cycle_counter+1,vi] = conc_difference*self.culture_volume/self.dilution_volume + old_vial_conc
         
 
     def update_vial_concentration(self, vial, dilution, conc):
@@ -872,7 +757,7 @@ class morbidostat(object):
         # enumerate all vials
         vi, fi = self.get_vial_and_drug_index(vial)
         ignore_dilution_threshold = self.adjust_dilution_concentration(vial)
-        if self.final_OD_estimate[self.cycle_counter,vi]>self.dilution_threshold or ignore_dilution_threshold == 1:
+        if self.final_OD_estimate[self.cycle_counter,vi]>self.dilution_threshold or ignore_dilution_threshold:
             conc = self.dilution_concentration[self.cycle_counter+1,vi]
             fractions = self.inject_concentration(vial, conc = conc,
                                     volume = self.dilution_volume, fi=fi)
@@ -1035,5 +920,3 @@ class morbidostat(object):
         if self.verbose>3:
             print("dilute vial %d with %1.4fml, previous OD: %1.4f"%(vial, volume_to_add, self.final_OD_estimate[self.cycle_counter,vi]))
         self.decisions[self.cycle_counter,vi] = volume_to_add
-
-
