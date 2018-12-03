@@ -32,7 +32,7 @@ vials_to_pins_assignment = [10, 11, 12, 13, 14, #row 1
 
 
 ####
-morb_path = '/mnt/c/Users/Eric/Documents/Master/Masterarbeit/python_morbidostat/'
+morb_path = '/home/ericulrich/Documents/Master/Masterarbeit/python_morbidostat/'
 
 ############
 # load calibration parameters
@@ -288,7 +288,7 @@ class morbidostat:
     def reset_arduino(self):
 	command_str = 'R'+'\n'
 	self.atomic_serial_write(command_str)
-	print("RRRRRRESET")	
+	print("Resetting arduino")	
 
     def run_waste_pump(self, run_time=0.1):
         '''
