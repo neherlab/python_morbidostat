@@ -3,9 +3,11 @@ import numpy as np
 from scipy.stats import linregress
 import time,copy,threading,os,sys
 from scipy import stats
+import glob
+import csv
 
  
-simulator = True
+simulator = False
 if simulator:
     import morbidostat_simulator as morb
 else:
@@ -177,8 +179,8 @@ class morbidostat(object):
         self.culture_volume = 18 # target volume in milliliters
         self.dilution_factor = dilution_factor
         self.drug_injection_count = [0]*len(vials)
-        self.dilution_threshold = 0.1
-        self.extra_suction  = 10 # extra volume that is being sucked out of the vials [ml]
+        self.dilution_threshold = 0.09
+        self.extra_suction  = 2 # extra volume that is being sucked out of the vials [ml]
         self.drugs = drugs
         self.mics = mics
         self.ndrugs = len(drugs)
@@ -201,7 +203,7 @@ class morbidostat(object):
         self.AB_switch_conc = 0.3          # use high concentration if culture conc is 30% of drug A
         self.feedback_time_scale =  12       # compare antibiotic concentration to that x cycles ago
         self.saturation_threshold = 0.4   # threshold beyond which OD can't be reliable measured
-        self.anticipation_threshold = 0.9  # fraction of target_OD, at which increasing antibiotics is first considered
+        self.anticipation_threshold = 0.95  # fraction of target_OD, at which increasing antibiotics is first considered
         # diagnostic variables
         self.max_AB_fold_increase = 1.1    # maximum amount by which the antibiotic concentration is allowed to increase within the feed back time scale
         self.mic_kd = 0.25   # fraction of the mic to which is added to low drug concentrations when calculating the AB_fold_increase
@@ -210,15 +212,22 @@ class morbidostat(object):
         self.running = False
         self.override = False
         self.tmp_conc = 5
-        self.start_conc = np.zeros((30,len(vials)))
-        self.deviation = np.zeros((30,len(vials)))
-        self.deltaod = np.zeros((30,len(vials)))
-        self.multiplication = np.zeros((30,len(vials)))
+
         self.n_cycles = self.experiment_duration//self.cycle_dt
         self.n_vials = len(self.vials)
         self.calculate_derived_values()
         self.ODs_per_cycle = int(self.cycle_dt-self.morb.mixing_time-self.pump_time - self.buffer_time)//self.OD_dt
-        
+        self.prefactor_conc_start = 0.1
+        self.prefactor_conc_multiplication = 3
+        self.prefactor_conc_anticipation = 0.025
+        self.prefactor_start_conc_comparison = 1
+        self.max_rel_increase = 0.6 
+        self.delta_OD_time_scale = 6
+        self.conc_diff_time_scale = 8 
+        self.prefactor_critical_conc = 0.5
+        self.store_critical_conc = [500]*len(vials)
+        self.load_from_file_limit = True
+        self.old_experiment_duration = 0
 
 
     def set_vial_properties(self, vial_dict):
@@ -289,7 +298,40 @@ class morbidostat(object):
             self.load_data_from_file()
 
     def load_data_from_file(self):
-        pass
+        print('coutner',self.cycle_counter)
+        self.base_name = self.restart_from_file
+        self.OD_fname = self.base_name+'OD/OD'
+        self.decisions_fname = self.base_name+'decisions.txt'
+        self.drug_conc_fname = {}
+        for drug in self.drugs:
+            self.drug_conc_fname[drug] = self.base_name+'vials_%s_concentrations.txt'%drug
+        self.temperature_fname = self.base_name+'temperature.txt'
+        self.cycle_OD_fname = self.base_name+'cycle_OD_estimate.txt'
+        self.growth_rate_fname = self.base_name+'growth_rate_estimates.txt'
+        self.last_cycle_fname = self.base_name+'OD/'+'current_cycle.dat'
+
+        # find cycle counter from previous run
+        # find last epxeriment time from last cycle
+
+
+        parameter_file = glob.glob(self.base_name+'/para*')
+        if self.load_from_file_limit:
+            self.load_from_file_limit = False
+            last_cycle = sorted(os.listdir(self.base_name+'OD'))[-2]
+            self.cycle_counter = int(last_cycle[-8:-4])
+            with open(parameter_file[0],'r') as myfile:
+                read_parameter = csv.reader(myfile,delimiter='\t')
+                for row in read_parameter:
+                    if row[0] == 'experiment_start:':
+                        old_experiment_time = row[1]
+                    if row[0] == 'experiment_duration:':
+                        self.old_experiment_duration = float(row[1])
+                        print('exp duration',self.old_experiment_duration)
+        #print(old_experiment_duration,old_experiment_time)
+
+
+        
+
 
     def add_cycles_to_data_arrays(self, cycles_to_add):
         '''
@@ -309,7 +351,12 @@ class morbidostat(object):
 
 
     def experiment_time(self):
-        return (time.time()-self.experiment_start)/self.second
+        if self.restart_from_file is not None:
+            #print(time.time()+self.old_experiment_duration-self.experiment_start/self.second)
+            #print(self.old_experiment_duration)
+            return (time.time()-self.experiment_start+self.experiment_duration)/self.second
+        else:
+            return (time.time()-self.experiment_start)/self.second
 
     def write_parameters_file(self, ):
         with open(self.base_name+'/parameters_%s.dat'%time.strftime('%Y-%m-%d_%H_%M_%S'), 'w') as params_file:
@@ -696,46 +743,58 @@ class morbidostat(object):
 
 
     def adjust_dilution_concentration(self, vial):
-        vi, fi = self.get_vial_and_drug_index(vial)
-        
-        # calculate the expected OD increase per cycle and by how much the expectect OD is over the target OD
-        finalOD = self.final_OD_estimate[self.cycle_counter,vi]
-        deltaOD = (self.final_OD_estimate[self.cycle_counter,vi] -
-                   self.final_OD_estimate[max(self.cycle_counter-10,0),vi])/10
 
+        vi, fi = self.get_vial_and_drug_index(vial)
+        # calculate the expected OD increase per cycle and by how much the expectect OD is over the target OD
+        final_OD = self.final_OD_estimate[self.cycle_counter,vi]
+        delta_OD = (self.final_OD_estimate[self.cycle_counter,vi] -
+                   self.final_OD_estimate[max(self.cycle_counter-self.delta_OD_time_scale,0),vi])/self.delta_OD_time_scale
+        delta_OD_previous_cycle = (self.final_OD_estimate[self.cycle_counter-1,vi] -
+                   self.final_OD_estimate[max(self.cycle_counter-self.delta_OD_time_scale-1,0),vi])/self.delta_OD_time_scale           
+        conc_diff = self.vial_drug_concentration[self.cycle_counter,vi]-\
+                    self.vial_drug_concentration[self.cycle_counter-self.conc_diff_time_scale,vi]
         # feedback is based on the current drug concentration in the vial
         vial_conc = np.copy(self.vial_drug_concentration[self.cycle_counter, vi])
-        print('vial_conc',vial_conc)
         ignore_dilution_threshold = False # necessary in order that diluting high drug concentration works below dilution threshold
 
         # start of the feedback
         # calculating of drug concentration only above the dilution threshold
         # but also makes sure that dilution of high drug concentration works
-        if finalOD<self.dilution_threshold:
-            if deltaOD<0 and self.vial_drug_concentration[self.cycle_counter, vi]>0.5*self.mics[fi]:
+        if final_OD<self.dilution_threshold:
+            if delta_OD<0 and self.vial_drug_concentration[self.cycle_counter, vi]>self.prefactor_critical_conc*self.store_critical_conc[vi]:
                 vial_conc = 0
                 ignore_dilution_threshold = True
                 
 
         # calculates drug concentration when bacteria are growing and OD is above dilution threshold
-        elif deltaOD>0:
-            # calculation of start concentration =
-            previous_concentrations = np.copy(self.vial_drug_concentration[self.cycle_counter-3:self.cycle_counter-1,vi])
-            if sum(previous_concentrations)<1.2*self.mics[fi]:
-                vial_conc += 0.8*self.mics[fi]
+        
+        elif delta_OD>0:
+            print(conc_diff, self.mics[fi],self.max_rel_increase*(vial_conc-conc_diff))
+            if conc_diff>max(self.mics[fi],self.max_rel_increase*(vial_conc-conc_diff)):
+                pass
+            else:
+                # calculation of start concentration =
+                previous_concentrations = self.vial_drug_concentration[self.cycle_counter,vi]
+                if previous_concentrations<self.prefactor_start_conc_comparison*self.mics[fi]:
+                    vial_conc += self.prefactor_conc_start*self.mics[fi]
+                # caclulation of drug concentration accodring to the growth
+                vial_conc *= 1.0 +self.prefactor_conc_multiplication*delta_OD/self.target_OD
 
-            # caclulation of drug concentration accodring to the growth
-            vial_conc *= 1.0 + 1.5*deltaOD*self.mics[fi]/self.target_OD/self.feedback_time_scale
-
-            # when they are still growing and exceed the anticipation threshold 10% of the drug vial_concentratio gets added            
-            if finalOD>self.target_OD*self.anticipation_threshold:
-                vial_conc += 0.1*vial_conc
+                # when they are still growing and exceed the anticipation threshold 10% of the drug vial_concentratio gets added            
+                if final_OD>self.target_OD*self.anticipation_threshold:
+                    vial_conc += self.prefactor_conc_anticipation*self.mics[fi]
 
         # when they are dieing media gets added
         else:
-            vial_conc =0 
+            if delta_OD_previous_cycle>0 and delta_OD<0:
+                self.store_critical_conc[vi] = self.vial_drug_concentration[self.cycle_counter,vi]
+            if self.vial_drug_concentration[self.cycle_counter,vi]>self.store_critical_conc[vi]:
+                vial_conc = 0
+            else:
+                pass 
 
         self.vial_to_inject_concentration(vial,vial_conc,vi)
+        print('vial_conc',vial_conc)
         return ignore_dilution_threshold  
 
         
