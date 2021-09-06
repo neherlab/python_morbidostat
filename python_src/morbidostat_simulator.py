@@ -1,4 +1,4 @@
-from __future__ import division
+
 import time
 import math
 import threading
@@ -11,9 +11,9 @@ OD_calibration_file_name = morb_path+'python_src/OD_calibration.dat'
 
 debug = False
 # dictionary mapping pumps to pins
-pumps = {'pump2': range(7,7+15),
-         'pump1': range(22,22+15),
-         'pump3': range(38,38+15), 'waste':3}
+pumps = {'pump2': list(range(7,7+15)),
+         'pump1': list(range(22,22+15)),
+         'pump3': list(range(38,38+15)), 'waste':3}
 
 
 class morbidostat:

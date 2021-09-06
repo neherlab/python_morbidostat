@@ -61,7 +61,7 @@ for pump_type in pumps:
                             pump_rate = float(entries[1])
                             pump_calibration_params[pump_type][vial] = pump_rate
                         except:
-                            print("error reading pump calibration:", line)
+                            print(("error reading pump calibration:", line))
                             pass
 
             except:
@@ -73,20 +73,20 @@ for pump_type in pumps:
             try:
                 pump_calibration_params[pump_type] = np.array([np.loadtxt(fname)])
             except:
-                print "error opening pump calibration, all pump calibration parameters set to 2.4ml/min"
+                print("error opening pump calibration, all pump calibration parameters set to 2.4ml/min")
                 pump_calibration_params[pump_type] = np.array([0.04])
         else:
-            print "no pump calibration file "+fname+", all pump calibration parameters set to 2.4 ml/min"
+            print("no pump calibration file "+fname+", all pump calibration parameters set to 2.4 ml/min")
             pump_calibration_params[pump_type] = np.array([0.04])
 
 if os.path.isfile(OD_calibration_file_name):
     try:
         voltage_to_OD_params = np.loadtxt(OD_calibration_file_name)
     except:
-        print "error opening OD calibration file, all OD parameters set to zeros"
+        print("error opening OD calibration file, all OD parameters set to zeros")
         voltage_to_OD_params = np.zeros((15,2))
 else:
-    print "no OD calibration file, all OD parameters set to zero"
+    print("no OD calibration file, all OD parameters set to zero")
     voltage_to_OD_params = np.zeros((15,2))
 
 #############
@@ -122,14 +122,14 @@ class morbidostat:
                 self.ser = serial.Serial('/dev/ttyACM'+str(port_number), baudrate, timeout = 1.0)
                 #self.ser = serial.Serial('COM2',9600 ,Timeout = 1.0)
                 if self.ser.isOpen():
-                    print("asdfSerial /dev/ttyACM"+str(port_number)+" opened")
+                    print(("asdfSerial /dev/ttyACM"+str(port_number)+" opened"))
                     # wait a second to let the serial port get up to speed
                     time.sleep(1)
                     self.morbidostat_OK = True
                     try_next=False
             except:
                 if port_number<10:
-                    print("Serial /dev/ttyACM"+str(port_number)+" not available, trying next")
+                    print(("Serial /dev/ttyACM"+str(port_number)+" not available, trying next"))
                     try_next=True
                     port_number+=1
                 else:
@@ -143,11 +143,11 @@ class morbidostat:
             if pump<len(pump_calibration_params[pump_type]):
                 return volume/pump_calibration_params[pump_type][pump]
             else:
-                print "invalid pump number", pump, 'only ',len(pump_calibration_params[pump_type]), \
-                    'calibration parameters'
+                print("invalid pump number", pump, 'only ',len(pump_calibration_params[pump_type]), \
+                    'calibration parameters')
                 return 0
         else:
-            print "invalid pump_type", pump_type, 'not in', pump_calibration_params.keys()
+            print("invalid pump_type", pump_type, 'not in', list(pump_calibration_params.keys()))
             return 0
 
 
@@ -157,7 +157,7 @@ class morbidostat:
         pump off threads
         '''
         tmp_last_pump_off_time = 0
-        for k,t in self.pump_off_threads.iteritems():
+        for k,t in self.pump_off_threads.items():
             t.join()
         time.sleep(self.mixing_time)
 
@@ -167,11 +167,11 @@ class morbidostat:
         '''
         if self.morbidostat_OK and self.ser.isOpen():
             # wait for all threads to finish
-            while any([t.is_alive() for k,t in self.pump_off_threads.iteritems()]):
+            while any([t.is_alive() for k,t in self.pump_off_threads.items()]):
                 print("\n Before disconnecting waiting for ")
-                for k,t in self.pump_off_threads.iteritems():
+                for k,t in self.pump_off_threads.items():
                     if t.is_alive():
-                        print(str(k)+ "\tto finish")
+                        print((str(k)+ "\tto finish"))
                 time.sleep(1)
             self.ser.close()
             self.morbidostat_OK=False
@@ -188,7 +188,7 @@ class morbidostat:
 
     def voltage_to_OD(self,vial, mean_val, std_val):
         if mean_val is None:
-            print "got None instead of an AD output for vial",vial
+            print("got None instead of an AD output for vial",vial)
             return 0,0
         else:
             ODval = voltage_to_OD_params[vial,0]*mean_val+voltage_to_OD_params[vial,1]
@@ -231,16 +231,16 @@ class morbidostat:
 
             bytes_written = self.atomic_serial_write(command_str)
             if debug:
-                print(str(time.time())+" out: "+command_str[:-1] + ' bytes_written: '+str(bytes_written))
+                print((str(time.time())+" out: "+command_str[:-1] + ' bytes_written: '+str(bytes_written)))
 
             # wait and read the response of the arduino
             time_delay = ((n_measurements-1)*dt + 10.0)*0.001  #seconds
             time.sleep(time_delay)
             if debug:
-                print self.ser.inWaiting()
+                print(self.ser.inWaiting())
             measurement = self.atomic_serial_readline()
             if debug:
-                print(str(time.time())+" in: "+measurement)
+                print((str(time.time())+" in: "+measurement))
 
             if switch_light_off:
                 self.switch_light(False) # switch IR LEDs off
@@ -337,23 +337,23 @@ class morbidostat:
         bytes_written = self.atomic_serial_write(command_str)
 
         if debug:
-            print(str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written))
+            print((str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)))
 
         # wait for reply and verify
         response = self.atomic_serial_readline()
         if debug:
-            print(str(time.time())+" in: "+response)
+            print((str(time.time())+" in: "+response))
 
         # parse the response and verify that the pump was set to the correct state
         entries = response.split()
         if len(entries)>2 and entries[0]=='D' and int(entries[1])==pin_number:
             if (entries[2]=='1')!=state:
-                print("pin "+str(pin_number)+" in wrong state\nArduino response")
+                print(("pin "+str(pin_number)+" in wrong state\nArduino response"))
                 print(response)
         else:
 	    self.reset_arduino()
             print("switch_pin received bad response:")
-            print response
+            print(response)
 
     def switch_light(self, state):
         '''
@@ -384,18 +384,18 @@ class morbidostat:
         command_str = 'T\n'
         bytes_written = self.atomic_serial_write(command_str)
         if debug:
-            print(str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written))
+            print((str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)))
 
         # wait for reply and verify
         response = self.atomic_serial_readline()
         if debug:
-            print(str(time.time())+" in: "+response)
+            print((str(time.time())+" in: "+response))
 
         entries = response.split()
         temp1, temp2 = float(entries[1]), float(entries[2])
         self.temperatures = (temp1, temp2)
         if debug:
-            print "temperatures:",self.temperatures
+            print("temperatures:",self.temperatures)
         if switch_light_off:
             self.switch_light(False)
 

@@ -21,7 +21,7 @@ def parse_drugs(entries):
 
 def parse_bottles(entries):
     # entries[0] == bottle name, followed by a list of concentrations
-    return {entries[0]:map(float, entries[1:])}
+    return {entries[0]:list(map(float, entries[1:]))}
 
 def parse_vials(entries):
     return {int(entries[0])-1:{"feedback":entries[1], "bottles":entries[2:-1], "feedback_drug": entries[-1]}}
@@ -34,7 +34,7 @@ def parse_config_table(fname):
     with open(fname) as config:
         parse_cat = None
         for line in config:
-            entries = filter(lambda x:x!="", line.strip().split(','))
+            entries = [x for x in line.strip().split(',') if x!=""]
             if len(entries)==0:
                 continue
             elif entries[0][0]=='#':
@@ -80,7 +80,7 @@ if __name__ == '__main__':
                        experiment_name = parameters['name'],
                        drugs = [x[0] for x in drugs],
                        mics = [x[2] for x in drugs],
-                       bottles = bottles.keys()
+                       bottles = list(bottles.keys())
                        )
 
     morb.set_vial_properties(vials)
