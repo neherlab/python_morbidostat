@@ -16,8 +16,8 @@ pumps = {'pump1': [22, 23, 24, 25, 26,  # 1.1 - 1.5 plug 1
                    27, 28, 29, 30, 31,  # 2.1 - 2.5 plug 2
                    32, 33, 34, 35, 36], # 3.1 - 3.5 plug 3
          'pump2': [37, 38, 39, 40, 41,  # 4.1 - 4.5 plug 4 (pump 2 didn't switch)
-                   42, 43, 44, 45, 46,  # 5.1 - 5.5 plug 5 
-                   47, 48, 49, 50, 51], # 6.1 - 6.5 plug 6 
+                   42, 43, 44, 45, 46,  # 5.1 - 5.5 plug 5
+                   47, 48, 49, 50, 51], # 6.1 - 6.5 plug 6
          'pump3': [14, 15, 16, 2, 3,      # 7.1 - 7.5 plug 7 (pin 0,1 seem to be always high)
                    4, 5, 6, 7, 8,       # 8.1 - 8.5 plug 8
                    9, 10, 11, 12, 13],  # 9.1 - 9.5 plug 7
@@ -41,17 +41,30 @@ pump_calibration_file_base = morb_path+'python_src/pump_calibration'
 OD_calibration_file_name = morb_path+'python_src/OD_calibration.dat'
 pump_calibration_params = {}
 for pump_type in pumps:
+    pump_calibration_params[pump_type] = np.nan*np.ones(15)
+
+for pump_type in pumps:
     fname = pump_calibration_file_base+'_'+pump_type+'.dat'
     if pump_type!='waste':
         if os.path.isfile(fname):
             try:
-                pump_calibration_params[pump_type] = np.loadtxt(fname)
+                with open(fname) as fh:
+                    for line in fh:
+                        if line[0]=='#':
+                            continue
+                        try:
+                            entries = line.strip().split('\t')
+                            vial = int(entries[0])
+                            pump_rate = float(entries[1])
+                            pump_calibration_params[pump_type][vial] = pump_rate
+                        except:
+                            print("error reading pump calibration:", line)
+                            pass
+
             except:
-                print "error opening pump calibration, all pump calibration parameters set to 2.4ml/min"
-                pump_calibration_params[pump_type] = 0.04*np.ones(15)
+                print("error opening pump calibration, all pump calibration parameters set to NaN")
         else:
-            print "no pump calibration file "+fname+", all pump calibration parameters set to 2.4 ml/min"
-            pump_calibration_params[pump_type] = 0.04*np.ones(15)
+            print("no pump calibration file, all pump calibration parameters set to NaN")
     else:
         if os.path.isfile(fname):
             try:
@@ -284,11 +297,11 @@ class morbidostat:
                 self.pump_off_threads[(pump_type,pump_number)].start()
         else:
             print("Serial port is not open")
-    
+
     def reset_arduino(self):
 	command_str = 'R'+'\n'
 	self.atomic_serial_write(command_str)
-	print("Resetting arduino")	
+	print("Resetting arduino")
 
     def run_waste_pump(self, run_time=0.1):
         '''

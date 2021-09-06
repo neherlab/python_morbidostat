@@ -6,7 +6,7 @@ from scipy import stats
 import glob
 import csv
 
- 
+
 simulator = False
 if simulator:
     import morbidostat_simulator as morb
@@ -134,7 +134,11 @@ def calibrate_pumps(mymorb, pump_type, vials = None, dt = 100):
 
     # calculate pump_rate and save to file
     pump_rate = (weight[1]-weight[0])/dt
-    np.savetxt(morb.pump_calibration_file_base+'_'+pump_type+'.dat', pump_rate)
+    fname = morb.pump_calibration_file_base+'_'+pump_type+'.dat'
+    with open(fname, 'w') as fh:
+        fh.write("#vial\tpump_rate[ml/s]\n")
+        for vial, r in zip(vials, pump_rate):
+            fh.write(f"{vial}\t{r}\n")
 
 class morbidostat(object):
     '''
@@ -221,9 +225,9 @@ class morbidostat(object):
         self.prefactor_conc_multiplication = 3
         self.prefactor_conc_anticipation = 0.025
         self.prefactor_start_conc_comparison = 1
-        self.max_rel_increase = 0.6 
+        self.max_rel_increase = 0.6
         self.delta_OD_time_scale = 6
-        self.conc_diff_time_scale = 8 
+        self.conc_diff_time_scale = 8
         self.prefactor_critical_conc = 0.5
         self.store_critical_conc = [500]*len(vials)
         self.load_from_file_limit = True
@@ -330,7 +334,7 @@ class morbidostat(object):
         #print(old_experiment_duration,old_experiment_time)
 
 
-        
+
 
 
     def add_cycles_to_data_arrays(self, cycles_to_add):
@@ -739,7 +743,7 @@ class morbidostat(object):
 
         self.added_volumes[vi]=np.sum(fractions.values())*volume
         return fractions
- 
+
 
 
     def adjust_dilution_concentration(self, vial):
@@ -750,7 +754,7 @@ class morbidostat(object):
         delta_OD = (self.final_OD_estimate[self.cycle_counter,vi] -
                    self.final_OD_estimate[max(self.cycle_counter-self.delta_OD_time_scale,0),vi])/self.delta_OD_time_scale
         delta_OD_previous_cycle = (self.final_OD_estimate[self.cycle_counter-1,vi] -
-                   self.final_OD_estimate[max(self.cycle_counter-self.delta_OD_time_scale-1,0),vi])/self.delta_OD_time_scale           
+                   self.final_OD_estimate[max(self.cycle_counter-self.delta_OD_time_scale-1,0),vi])/self.delta_OD_time_scale
         conc_diff = self.vial_drug_concentration[self.cycle_counter,vi]-\
                     self.vial_drug_concentration[self.cycle_counter-self.conc_diff_time_scale,vi]
         # feedback is based on the current drug concentration in the vial
@@ -764,10 +768,10 @@ class morbidostat(object):
             if delta_OD<0 and self.vial_drug_concentration[self.cycle_counter, vi]>self.prefactor_critical_conc*self.store_critical_conc[vi]:
                 vial_conc = 0
                 ignore_dilution_threshold = True
-                
+
 
         # calculates drug concentration when bacteria are growing and OD is above dilution threshold
-        
+
         elif delta_OD>0:
             print(conc_diff, self.mics[fi],self.max_rel_increase*(vial_conc-conc_diff))
             if conc_diff>max(self.mics[fi],self.max_rel_increase*(vial_conc-conc_diff)):
@@ -780,7 +784,7 @@ class morbidostat(object):
                 # caclulation of drug concentration accodring to the growth
                 vial_conc *= 1.0 +self.prefactor_conc_multiplication*delta_OD/self.target_OD
 
-                # when they are still growing and exceed the anticipation threshold 10% of the drug vial_concentratio gets added            
+                # when they are still growing and exceed the anticipation threshold 10% of the drug vial_concentratio gets added
                 if final_OD>self.target_OD*self.anticipation_threshold:
                     vial_conc += self.prefactor_conc_anticipation*self.mics[fi]
 
@@ -791,13 +795,13 @@ class morbidostat(object):
             if self.vial_drug_concentration[self.cycle_counter,vi]>self.store_critical_conc[vi]:
                 vial_conc = 0
             else:
-                pass 
+                pass
 
         self.vial_to_inject_concentration(vial,vial_conc,vi)
         print('vial_conc',vial_conc)
-        return ignore_dilution_threshold  
+        return ignore_dilution_threshold
 
-        
+
     def vial_to_inject_concentration(self,vial,vial_conc,vi):
         # current concentration in vial
         old_vial_conc = np.copy(self.vial_drug_concentration[self.cycle_counter, vi])
@@ -805,13 +809,13 @@ class morbidostat(object):
         conc_difference = vial_conc - old_vial_conc
         # calculating how much drug needs to be added in order to achieve the cacluated concentration
         self.dilution_concentration[self.cycle_counter+1,vi] = conc_difference*self.culture_volume/self.dilution_volume + old_vial_conc
-        
+
 
     def update_vial_concentration(self, vial, dilution, conc):
         vi,fi = self.get_vial_and_drug_index(vial)
         self.vial_drug_concentration[self.cycle_counter+1,vi] = self.vial_drug_concentration[self.cycle_counter,vi]*dilution +((1.0-dilution)*conc)
-        
-        
+
+
     def continuous_feedback(self, vial):
         # enumerate all vials
         vi, fi = self.get_vial_and_drug_index(vial)
@@ -826,7 +830,7 @@ class morbidostat(object):
         else:
             self.update_vial_concentration(vial, 1.0, np.zeros(len(self.drugs)))
             self.decisions[self.cycle_counter,vi] = -1.0
-            
+
 
 
     def get_vial_bottle_concentrations(self, vial, fi):
