@@ -39,8 +39,9 @@ def calibrate_OD(vials = None):
             s = input("Enter OD of standard [q to quit]: ")
             if s=='q':
                 print("Aborting calibration")
-		all_cycles_measured = True
-		break
+                all_cycles_measured = True
+                break
+
             try:
                 cur_OD = float(s)
                 no_valid_standard=False
@@ -668,9 +669,9 @@ class morbidostat(object):
             for vi,vial in index_vial_pairs[::(1-2*(rep%2))]:
                 tmp_OD_measurements[rep, vi] = self.morb.measure_OD(vial, 1, 0, False)[0]
                 if self.verbose>4:
-                     print(format(tmp_OD_measurements[rep, vi], '0.3f'), end=' ')
+                    print(format(tmp_OD_measurements[rep, vi], '0.3f'), end=' ')
             if self.verbose>4:
-	            print()
+                print()
         self.last_OD_measurements[self.OD_measurement_counter, :-1] = np.median(tmp_OD_measurements, axis=0)
         if self.verbose>2:
             print("OD:", ' '.join(map(str,np.round(self.last_OD_measurements[self.OD_measurement_counter, :],3))))

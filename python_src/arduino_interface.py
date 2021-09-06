@@ -303,9 +303,9 @@ class morbidostat:
             print("Serial port is not open")
 
     def reset_arduino(self):
-	command_str = 'R'+'\n'
-	self.atomic_serial_write(command_str)
-	print("Resetting arduino")
+        command_str = 'R'+'\n'
+        self.atomic_serial_write(command_str)
+        print("Resetting arduino")
 
     def run_waste_pump(self, run_time=0.1):
         '''
@@ -351,7 +351,7 @@ class morbidostat:
                 print(("pin "+str(pin_number)+" in wrong state\nArduino response"))
                 print(response)
         else:
-	    self.reset_arduino()
+            self.reset_arduino()
             print("switch_pin received bad response:")
             print(response)
 
