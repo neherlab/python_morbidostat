@@ -32,7 +32,9 @@ vials_to_pins_assignment = [10, 11, 12, 13, 14, #row 1
 
 
 ####
-morb_path = '/home/ericulrich/Documents/Master/Masterarbeit/python_morbidostat/'
+# morb_path = '/home/ericulrich/Documents/Master/Masterarbeit/python_morbidostat/'
+morb_path = '/'.join(os.path.realpath(__file__).split('/')[:-2])+'/'
+print(morb_path)
 
 ############
 # load calibration parameters
@@ -41,7 +43,7 @@ pump_calibration_file_base = morb_path+'python_src/pump_calibration'
 OD_calibration_file_name = morb_path+'python_src/OD_calibration.dat'
 pump_calibration_params = {}
 for pump_type in pumps:
-    pump_calibration_params[pump_type] = np.nan*np.ones(15)
+    pump_calibration_params[pump_type] = 0.04*np.ones(15)
 
 for pump_type in pumps:
     fname = pump_calibration_file_base+'_'+pump_type+'.dat'
@@ -50,6 +52,7 @@ for pump_type in pumps:
             try:
                 with open(fname) as fh:
                     for line in fh:
+                        print(line)
                         if line[0]=='#':
                             continue
                         try:
@@ -116,7 +119,8 @@ class morbidostat:
         port_number=0
         while try_next:
             try:
-                self.ser = serial.Serial('COM2',9600 ,Timeout = 1.0)
+                self.ser = serial.Serial('/dev/ttyACM'+str(port_number), baudrate, timeout = 1.0)
+                #self.ser = serial.Serial('COM2',9600 ,Timeout = 1.0)
                 if self.ser.isOpen():
                     print("asdfSerial /dev/ttyACM"+str(port_number)+" opened")
                     # wait a second to let the serial port get up to speed

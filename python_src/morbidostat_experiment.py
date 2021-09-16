@@ -138,7 +138,8 @@ def calibrate_pumps(mymorb, pump_type, vials = None, dt = 100):
     with open(fname, 'w') as fh:
         fh.write("#vial\tpump_rate[ml/s]\n")
         for vial, r in zip(vials, pump_rate):
-            fh.write(f"{vial}\t{r}\n")
+#            fh.write(f"{vial}\t{r}\n")
+            fh.write(str(vial)+"\t" + str(r) +"\n")
 
 class morbidostat(object):
     '''
