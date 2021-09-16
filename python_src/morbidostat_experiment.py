@@ -7,7 +7,7 @@ import glob
 import csv
 
 
-simulator = False
+simulator = True
 if simulator:
     import morbidostat_simulator as morb
 else:
@@ -60,7 +60,7 @@ def calibrate_OD(vials = None):
             no_valid_standard=True
 
     if len(ODs)>1:
-        print(("Collected "+str(len(ODs))+" OD voltage pairs, calculating voltage -> OD  conversion"))
+        print("Collected "+str(len(ODs))+" OD voltage pairs, calculating voltage -> OD  conversion")
         ODs = np.array(ODs)
         voltages = np.array(voltages).T
         fit_parameters = np.zeros((len(vials), 2))
@@ -69,7 +69,7 @@ def calibrate_OD(vials = None):
             if good_measurements.sum()>1:
                 slope, intercept, r,p,stderr = linregress(ODs[good_measurements], voltages[vi,good_measurements])
             else:
-                print(("less than 2 good measurements, also using saturated measurements for vial"+str(vial)))
+                print("less than 2 good measurements, also using saturated measurements for vial"+str(vial))
                 slope, intercept, r,p,stderr = linregress(ODs, voltages[vi,:])
             fit_parameters[vi,:] = [1.0/slope,  -intercept/slope]
         np.savetxt(morb.OD_calibration_file_name, fit_parameters)
@@ -284,9 +284,9 @@ class morbidostat(object):
             if os.path.exists(self.base_name):
                 print(self.base_name+"directory already exists")
             else:
-                os.mkdir(self.base_name)
+                os.makedirs(self.base_name)
             if not os.path.exists(self.base_name+'/OD'):
-                os.mkdir(self.base_name+'OD/')
+                os.makedirs(self.base_name+'OD/')
         else:
             self.base_name = self.restart_from_file.rstrip('/')+'/'
 
@@ -304,7 +304,7 @@ class morbidostat(object):
             self.load_data_from_file()
 
     def load_data_from_file(self):
-        print(('coutner',self.cycle_counter))
+        print('coutner',self.cycle_counter)
         self.base_name = self.restart_from_file
         self.OD_fname = self.base_name+'OD/OD'
         self.decisions_fname = self.base_name+'decisions.txt'
@@ -332,7 +332,7 @@ class morbidostat(object):
                         old_experiment_time = row[1]
                     if row[0] == 'experiment_duration:':
                         self.old_experiment_duration = float(row[1])
-                        print(('exp duration',self.old_experiment_duration))
+                        print('exp duration',self.old_experiment_duration)
         #print(old_experiment_duration,old_experiment_time)
 
 
@@ -445,7 +445,7 @@ class morbidostat(object):
                         np.copy(self.drug_concentrations)))
             self.drug_concentrations[bottle_ii]=conc
         else:
-            print(("not a valid bottle, has to be one of ", self.bottles))
+            print("not a valid bottle, has to be one of ", self.bottles)
 
 
     def save_data(self):
@@ -579,7 +579,7 @@ class morbidostat(object):
                     print("run_morbidostat: remaining time", remaining_time)
             else:
                 if self.verbose>2:
-                    print(("run_morbidostat: remaining time is negative"+str(remaining_time)))
+                    print("run_morbidostat: remaining time is negative"+str(remaining_time))
             if self.stopped or self.interrupted:
                 break
         if self.cycle_counter==self.n_cycles:
@@ -643,12 +643,12 @@ class morbidostat(object):
                 time.sleep(remaining_time*self.second)
             else:
                 if self.verbose>2:
-                    print(("measure_OD_for_cycle: remaining time is negative"
-                      +str(remaining_time)))
+                    print("measure_OD_for_cycle: remaining time is negative"
+                      +str(remaining_time))
         self.OD[self.cycle_counter,:,:]=self.last_OD_measurements
         if self.verbose==1:
-            print(("vial:"+ ", ".join(["  v%02d"%(x+1) for x in self.vials])))
-            print(("OD:  "+ ", ".join(["%1.3f"%x for x in self.last_OD_measurements[-1,:-1]])+'\n'))
+            print("vial:"+ ", ".join(["  v%02d"%(x+1) for x in self.vials]))
+            print("OD:  "+ ", ".join(["%1.3f"%x for x in self.last_OD_measurements[-1,:-1]])+'\n')
 
     def measure_OD(self):
         '''
@@ -726,7 +726,7 @@ class morbidostat(object):
             mix[mix<0.0] = 0.0
             mix[mix>1.0] = 1.0
         if self.verbose>4:
-            print(("desired concentration %f, will inject %f of conc %f and %f of conc %f"%(conc, mix[0], bottle_conc[best_pair[0]], mix[1], bottle_conc[best_pair[1]])))
+            print("desired concentration %f, will inject %f of conc %f and %f of conc %f"%(conc, mix[0], bottle_conc[best_pair[0]], mix[1], bottle_conc[best_pair[1]]))
         actual_concentration = (mix[0]*bottle_conc[best_pair[0]]+mix[1]*bottle_conc[best_pair[1]])
         fractions = {'pump%d'%(p+1): frac for p, frac in zip(best_pair,mix)}
         return fractions, actual_concentration
@@ -736,11 +736,11 @@ class morbidostat(object):
         fractions, actual_concentration = self.mix_concentration(vial, conc, fi)
         vi = self.vials.index(vial)
         if self.verbose>2:
-            print(("inject_concentration: vial %d"%(vial), fractions))
+            print("inject_concentration: vial %d"%(vial), fractions)
         for pump, frac in fractions.items():
             if frac>0.05:
                 if self.verbose>2:
-                    print(("injecting %f1.4ml from %s into vial %d"%(volume*frac, pump, vial)))
+                    print("injecting %f1.4ml from %s into vial %d"%(volume*frac, pump, vial))
                 self.morb.inject_volume(pump, vial, volume*frac, conc=conc)
 
         self.added_volumes[vi]=np.sum(list(fractions.values()))*volume
@@ -775,7 +775,7 @@ class morbidostat(object):
         # calculates drug concentration when bacteria are growing and OD is above dilution threshold
 
         elif delta_OD>0:
-            print((conc_diff, self.mics[fi],self.max_rel_increase*(vial_conc-conc_diff)))
+            print("concentration change", conc_diff, self.mics[fi],self.max_rel_increase*(vial_conc-conc_diff))
             if conc_diff>max(self.mics[fi],self.max_rel_increase*(vial_conc-conc_diff)):
                 pass
             else:
@@ -800,7 +800,7 @@ class morbidostat(object):
                 pass
 
         self.vial_to_inject_concentration(vial,vial_conc,vi)
-        print(('vial_conc',vial_conc))
+        print('vial_conc',list(vial_conc))
         return ignore_dilution_threshold
 
 
@@ -908,7 +908,7 @@ class morbidostat(object):
             tmp_decision = inhibit_decision
 
         if self.verbose>3:
-            print(("dilute vial %d with %s. current: %1.3f, previous: %1.3f"%(vial, tmp_decision[0], current_conc, dilute_to_OD)))
+            print("dilute vial %d with %s. current: %1.3f, previous: %1.3f"%(vial, tmp_decision[0], current_conc, dilute_to_OD))
 
         return tmp_decision
 
@@ -983,5 +983,5 @@ class morbidostat(object):
             self.added_volumes[vi]=volume_to_add
             self.morb.inject_volume(dilute_decision[0], vial, volume_to_add, conc=0.0)
         if self.verbose>3:
-            print(("dilute vial %d with %1.4fml, previous OD: %1.4f"%(vial, volume_to_add, self.final_OD_estimate[self.cycle_counter,vi])))
+            print("dilute vial %d with %1.4fml, previous OD: %1.4f"%(vial, volume_to_add, self.final_OD_estimate[self.cycle_counter,vi]))
         self.decisions[self.cycle_counter,vi] = volume_to_add

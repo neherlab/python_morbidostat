@@ -61,7 +61,7 @@ for pump_type in pumps:
                             pump_rate = float(entries[1])
                             pump_calibration_params[pump_type][vial] = pump_rate
                         except:
-                            print(("error reading pump calibration:", line))
+                            print("error reading pump calibration:", line)
                             pass
 
             except:
@@ -117,23 +117,25 @@ class morbidostat:
         '''
         try_next = True
         port_number=0
+
         while try_next:
             try:
-                self.ser = serial.Serial('/dev/ttyACM'+str(port_number), baudrate, timeout = 1.0)
+                device_name = '/dev/ttyACM'+str(port_number)
+                self.ser = serial.Serial(device_name, baudrate, timeout = 1.0)
                 #self.ser = serial.Serial('COM2',9600 ,Timeout = 1.0)
                 if self.ser.isOpen():
-                    print(("asdfSerial /dev/ttyACM"+str(port_number)+" opened"))
+                    print(f"Serial {device_name} opened")
                     # wait a second to let the serial port get up to speed
                     time.sleep(1)
                     self.morbidostat_OK = True
                     try_next=False
             except:
                 if port_number<10:
-                    print(("Serial /dev/ttyACM"+str(port_number)+" not available, trying next"))
+                    print(f"Serial {device_name} not available, trying next")
                     try_next=True
                     port_number+=1
                 else:
-                    print("asdfOpening serial port failed")
+                    print("Opening serial port failed")
                     try_next=False
                 self.morbidostat_OK = False
         return port_number
@@ -171,7 +173,7 @@ class morbidostat:
                 print("\n Before disconnecting waiting for ")
                 for k,t in self.pump_off_threads.items():
                     if t.is_alive():
-                        print((str(k)+ "\tto finish"))
+                        print(str(k)+ "\tto finish")
                 time.sleep(1)
             self.ser.close()
             self.morbidostat_OK=False
@@ -348,7 +350,7 @@ class morbidostat:
         entries = response.split()
         if len(entries)>2 and entries[0]=='D' and int(entries[1])==pin_number:
             if (entries[2]=='1')!=state:
-                print(("pin "+str(pin_number)+" in wrong state\nArduino response"))
+                print("pin "+str(pin_number)+" in wrong state\nArduino response")
                 print(response)
         else:
             self.reset_arduino()
