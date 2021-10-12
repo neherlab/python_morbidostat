@@ -112,3 +112,5 @@ local.properties
 # PDT-specific
 .buildpath
 
+# Libre Office lock files
+\.~lock*
