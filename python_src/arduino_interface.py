@@ -103,11 +103,11 @@ class morbidostat:
 
     def atomic_serial_write(self,msg):
         with lok:
-            self.ser.write(msg)
+            self.ser.write(msg.encode('ascii'))
         return len(msg)
     def atomic_serial_readline(self):
         with lok:
-            return self.ser.readline()
+            return self.ser.readline().decode()
 
     def connect(self):
         '''
