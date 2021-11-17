@@ -1,0 +1,158 @@
+experiment: 
+  name: 'Test'
+  target_OD: 0.2
+  dilution: 0.97
+  bacteria: 
+    name: e_coli 
+    strain: MG1997
+  total_duration: 
+    value: 12
+    unit: d
+  cycle_duration:
+    value: 600
+    unit: s
+  OD_duration:
+    value: 30
+    unit: s
+
+drugs: 
+  cefepime:
+    mic: 31.25
+    unit: ng/ml
+  ampicillin:
+    mic: 100
+    unit: ng/ml
+
+bottles:
+  A:
+    drug: cefepime
+    concentration: 0
+    unit: ng/ml
+  B:
+    drug: cefepime
+    concentration: 100
+    unit: ng/ml  
+  C:
+    drug: cefepime
+    concentration: 1000
+    unit: ng/ml
+
+pkpd:
+  - time: 0
+    concentration: 10
+  - time: 20
+    concentration: 100
+  - time: 60
+    concentration: 30
+  - time: 120
+    concentration: 50
+
+pkpd_cycles:
+  pkpd_total_cycles: 3
+        
+vials:
+  - number: 1
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 2
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 3
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 4
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 5
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 6
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 7
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 8
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 9
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 10
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 11
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 12
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 13
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 14
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C
+  - number: 15
+    program: M
+    drug: cefepime
+    bottles: 
+      - A
+      - B
+      - C  
