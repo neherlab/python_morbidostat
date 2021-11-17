@@ -7,7 +7,7 @@ import glob
 import csv
 
 
-simulator = True
+simulator = False
 if simulator:
     import morbidostat_simulator as morb
 else:
