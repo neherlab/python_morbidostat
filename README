@@ -1,4 +1,6 @@
-# OD CALIBRATION:
+# Morbidostat user manual
+
+# 1. OD CALIBRATION:
 #
 # type the following
 
@@ -24,7 +26,8 @@ calibrate_OD()
 # regression statistics will be printed and a figure should open showing the gauge curves. 
 # if figure doesn't open, type
 
-show()
+import matplotlib.pyplot as plt
+plt.show()
 
 # the routine will save a file OD_calibration.dat in python_src
 # and a file voltage_measurements_YYYYMMDD.dat in the data directory
@@ -84,9 +87,9 @@ ipython --pylab
 
 
 # the latter imports the necessary functions.
-# then type
+# then type (choose between pump1, pump2, and pump3)
 
-pump_type = 'medium'
+pump_type = 'pump1'
 
 from morbidostat_experiment import *
 mymorb = morbidostat()
@@ -95,11 +98,9 @@ mymorb.run_all_pumps(pump_type, 200)
 # make sure all tubing is filled with liquid and a steady stream of drops enters each vial
 # empty all vials
 
+# Set pump time
 dt=200
 
-calibrate_pumps_parallel(mymorb, pump_type, dt=dt)
+calibrate_pumps(mymorb, pump_type, dt=dt)
 
 # 
-
-
-
