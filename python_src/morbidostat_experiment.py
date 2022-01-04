@@ -755,7 +755,7 @@ class morbidostat(object):
                 self.morb.inject_volume(pump, vial, volume*frac, conc=conc)
 
         self.added_volumes[vi]=np.sum(list(fractions.values()))*volume
-        return fractions
+        return fractions, actual_concentration
 
 
 
@@ -1055,23 +1055,7 @@ class morbidostat(object):
 
         # Calculate conc_of_flow_in_volume
         conc_of_flow_in_volume = ((interpolated_conc*(vial_volume+flow_in_volume))-(vial_drug_conc*vial_volume))/flow_in_volume
-
-        # Mix concentrations
-        fractions, injected_concentration = self.mix_concentration(vial, conc_of_flow_in_volume, fi = fi)
+        fractions, injected_concentration = self.inject_concentration(vial, flow_in_volume, conc_of_flow_in_volume, fi=fi)
 
         # Update vial concentration
         self.update_vial_concentration(vial, self.dilution_factor, injected_concentration)
-
-        # Inject calculated concentration
-        if self.verbose>2:
-            print("inject_concentration: vial %d"%(vial), fractions)
-        for pump, frac in fractions.items():
-            if frac>0.05:
-                if self.verbose>2:
-                    print("injecting %f2.0ml from %s into vial %d"%(flow_in_volume*frac, pump, vial))
-                self.morb.inject_volume(pump, vial, flow_in_volume*frac)
-
-        self.added_volumes[vi]=np.sum(list(fractions.values()))*flow_in_volume
-
-        # Remove waste and additional safty margin
-        self.morb.remove_waste(max(self.added_volumes) + self.extra_suction)
