@@ -1,13 +1,17 @@
 
 import numpy as np
+from numpy.core.fromnumeric import squeeze
 from scipy.stats import linregress
+from scipy.interpolate import interp1d
 import time,copy,threading,os,sys
 from scipy import stats
 import glob
 import csv
 
+# Remove later
+import matplotlib.pyplot as plt
 
-simulator = False
+simulator = True
 if simulator:
     import morbidostat_simulator as morb
 else:
@@ -18,6 +22,7 @@ MORBIDOSTAT_EXPERIMENT = 'M'
 CONTINUOUS_MORBIDOSTAT = 'C'
 GROWTH_RATE_EXPERIMENT = 'G'
 FIXED_OD_EXPERIMENT = 'OD'
+PKPD_EXPERIMENT = 'PK'
 
 do_nothing = ("none", -1)
 
@@ -151,14 +156,14 @@ class morbidostat(object):
     either medium or drug solution at different concentrations.
     '''
     def __init__(self, vials = list(range(15)), experiment_duration = 2*60*60,
-                 target_OD = 1, dilution_factor = 0.9, bug = 'tbd', drugs =[], mics=[],
-                 bottles = [], OD_dt = 30, cycle_dt = 600, experiment_name="tbd", verbose=1):
+                 target_OD = 1, dilution_factor = 0.9, bug = 'tbd', drugs =None, mics=None,
+                 bottles = None, OD_dt = 30, cycle_dt = 600, experiment_name="tbd", verbose=1, pkpd_time=None, pkpd_conc=None, pkpd_cycle=None):
         # the default experiment is a morbidostat measurement
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
         if simulator:
-            self.second = .001
+            self.second = 0.001
         else:
             self.second = 1.0
         self.verbose = verbose
@@ -235,6 +240,10 @@ class morbidostat(object):
         self.load_from_file_limit = True
         self.old_experiment_duration = 0
 
+        # pkpd variables
+        self.pkpd_time = pkpd_time
+        self.pkpd_conc = pkpd_conc
+        self.pkpd_cycle = pkpd_cycle
 
     def set_vial_properties(self, vial_dict):
         self.vial_props = vial_dict
@@ -610,6 +619,8 @@ class morbidostat(object):
                 pass
             elif self.vial_props[vial]["feedback"] == CONTINUOUS_MORBIDOSTAT:
                 self.continuous_feedback(vial)
+            elif self.vial_props[vial]["feedback"] == PKPD_EXPERIMENT:
+                self.pkpd_conc_change_decision(vial)
             else:
                 print("unknown experiment type:", self.experiment_type[vi])
         self.vial_drug_concentration[self.cycle_counter, -1, :] = self.experiment_time()
@@ -985,3 +996,82 @@ class morbidostat(object):
         if self.verbose>3:
             print("dilute vial %d with %1.4fml, previous OD: %1.4f"%(vial, volume_to_add, self.final_OD_estimate[self.cycle_counter,vi]))
         self.decisions[self.cycle_counter,vi] = volume_to_add
+
+
+# pkpd functions
+
+    def pkpd_feedback(self):
+        """ Creates interpolation function from pkpd timepoints and concentrations
+
+        Takes all timepoints and concentrations from the pkpd config file and
+        creates a function, from which all other concentrations at any timepoint
+        can be calculated.
+
+            Args:
+                Timepoints as a list time_new from self.pkpd_time.
+                Concentrations as a list conc_new from self.pkpd_conc.
+
+            Results:
+                Interpol_res = Interpolated result given as a list.
+        """
+        # Set parameters
+        # print("pkpd",self.pkpd_conc, self.pkpd_time)
+        time_new = np.asarray(self.pkpd_time).squeeze()
+        conc_new = np.asarray(self.pkpd_conc).squeeze()
+
+        #Create interpolation function
+        f = interp1d(time_new, conc_new, kind = 'linear')
+
+        return f
+
+    def pkpd_conc_change_decision(self, vial):
+        """ Core function of the pkpd modeling program.
+
+        1. Sets variables from class instances.
+        2. Calculates mixed concentration via c2 = (ct(V1+V2)-c1*V1)/V2, ct is target conc. calculated via
+           the pkpd_feedback function, V1 is the initial vial volume, V2 is the added volume,
+           and c1 the initial concentration.
+        3. Uses the mix concentration function to determine which pumps are best used (optimal fractions),
+           and what the actual injected conc. will be.
+        4. Updates the vial concentration with the injected concentration for each cycle.
+        5. Injects the calculated volumes by multiplying fractions with added volume.
+        6. Removes waste volume plus some safty margin.
+
+            Args:
+                Vials as a list from 0 to 14.
+
+        """
+        vi, fi = self.get_vial_and_drug_index(vial)
+
+        f = self.pkpd_feedback()
+
+        # Create experiment variables
+        pkpd_cycle_end = self.pkpd_time[-1]
+        vial_volume = self.culture_volume
+        flow_in_volume = self.dilution_volume
+        vial_drug_conc = self.vial_drug_concentration[self.cycle_counter,vi, self.ndrugs-1]
+        current_experiment_time = self.experiment_time()
+        interpolated_conc = f(current_experiment_time%pkpd_cycle_end)
+
+        # Calculate conc_of_flow_in_volume
+        conc_of_flow_in_volume = ((interpolated_conc*(vial_volume+flow_in_volume))-(vial_drug_conc*vial_volume))/flow_in_volume
+
+        # Mix concentrations
+        fractions, injected_concentration = self.mix_concentration(vial, conc_of_flow_in_volume, fi = fi)
+
+        # Update vial concentration
+        self.update_vial_concentration(vial, self.dilution_factor, injected_concentration)
+
+        # Inject calculated concentration
+        if self.verbose>2:
+            print("inject_concentration: vial %d"%(vial), fractions)
+        for pump, frac in fractions.items():
+            if frac>0.05:
+                if self.verbose>2:
+                    print("injecting %f2.0ml from %s into vial %d"%(flow_in_volume*frac, pump, vial))
+                self.morb.inject_volume(pump, vial, flow_in_volume*frac)
+
+        self.added_volumes[vi]=np.sum(list(fractions.values()))*flow_in_volume
+
+        # Remove waste and additional safty margin
+        self.morb.remove_waste(max(self.added_volumes) + self.extra_suction)

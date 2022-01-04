@@ -1,0 +1,21 @@
+timepoints:
+  - time_in_seconds: 0
+    concentration: 0
+    unit_conc: ng/ml
+  - time_in_seconds: 6000
+    concentration: 80
+    unit_conc: ng/ml
+  - time_in_seconds: 12000
+    concentration: 30
+    unit_conc: ng/ml
+  - time_in_seconds: 36000
+    concentration: 0
+    unit_conc: ng/ml
+
+total_cycle_length:
+  time: 50
+  unit: m
+cycles: 1
+
+
+
