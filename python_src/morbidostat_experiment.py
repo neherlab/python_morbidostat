@@ -187,11 +187,11 @@ class morbidostat(object):
             self.vials = []
 
         # Checks to see if parameter is None
-        if drugs == None:
+        if drugs is None:
             drugs = []
-        if mics == None:
+        if mics is None:
             mics = []
-        if bottles == None:
+        if bottles is None:
             bottles = []
 
         self.target_OD = target_OD
