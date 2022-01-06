@@ -157,7 +157,7 @@ class morbidostat(object):
     '''
     def __init__(self, vials = list(range(15)), experiment_duration = 2*60*60,
                  target_OD = 1, dilution_factor = 0.9, bug = 'tbd', drugs =None, mics=None,
-                 bottles = None, OD_dt = 30, cycle_dt = 600, experiment_name="tbd", verbose=1, pkpd_time=None, pkpd_conc=None, pkpd_cycle=None):
+                 bottles = None, OD_dt = 30, cycle_dt = 600, experiment_name="tbd", verbose=1, pkpd_time=None, pkpd_conc=None):
         # the default experiment is a morbidostat measurement
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
@@ -186,6 +186,14 @@ class morbidostat(object):
             print("Morbidostat set-up: all vial numbers must be between 0 and 14")
             self.vials = []
 
+        # Checks to see if parameter is None
+        if drugs == None:
+            drugs = []
+        if mics == None:
+            mics = []
+        if bottles == None:
+            bottles = []
+
         self.target_OD = target_OD
         self.culture_volume = 18 # target volume in milliliters
         self.dilution_factor = dilution_factor
@@ -194,6 +202,7 @@ class morbidostat(object):
         self.extra_suction  = 2 # extra volume that is being sucked out of the vials [ml]
         self.drugs = drugs
         self.mics = mics
+
         self.ndrugs = len(drugs)
         self.nbottles = len(bottles)
         self.bottles = bottles
@@ -243,7 +252,6 @@ class morbidostat(object):
         # pkpd variables
         self.pkpd_time = pkpd_time
         self.pkpd_conc = pkpd_conc
-        self.pkpd_cycle = pkpd_cycle
 
     def set_vial_properties(self, vial_dict):
         self.vial_props = vial_dict

@@ -11,11 +11,3 @@ timepoints:
   - time_in_seconds: 36000
     concentration: 0
     unit_conc: ng/ml
-
-total_cycle_length:
-  time: 50
-  unit: m
-cycles: 1
-
-
-

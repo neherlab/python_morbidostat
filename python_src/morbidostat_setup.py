@@ -87,11 +87,9 @@ if __name__ == '__main__':
             pkpd_params = yaml.safe_load(fi)
         pkpd_time = [item['time_in_seconds'] for item in pkpd_params['timepoints']]
         pkpd_conc = [item['concentration'] for item in pkpd_params['timepoints']]
-        pkpd_cycle = pkpd_params['cycles']
     else:
         pkpd_time = 0
         pkpd_conc = 0
-        pkpd_cycle = 0
 
 
     run_params["vials"].sort(key=lambda x:x["number"])
