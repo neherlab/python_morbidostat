@@ -1,16 +1,16 @@
 experiment:
-  name: 'Test'
+  name: 'second_pkpd_test'
   target_OD: 0.2
-  dilution: 0.9
+  dilution: 0.94
   pkpd: True
   bacteria:
     name: e_coli
     strain: MG1997
   total_duration:
-    value: 1200
-    unit: m
+    value: 60
+    unit: h
   cycle_duration:
-    value: 600
+    value: 1200
     unit: s
   OD_duration:
     value: 30
@@ -19,9 +19,6 @@ experiment:
 drugs:
   cefepime:
     mic: 31.25
-    unit: ng/ml
-  ampicillin:
-    mic: 100
     unit: ng/ml
 
 bottles:

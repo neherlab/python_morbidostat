@@ -2,12 +2,21 @@ timepoints:
   - time_in_seconds: 0
     concentration: 0
     unit_conc: ng/ml
-  - time_in_seconds: 6000
-    concentration: 80
+  - time_in_seconds: 5400
+    concentration: 70
     unit_conc: ng/ml
-  - time_in_seconds: 12000
-    concentration: 30
+  - time_in_seconds: 10800
+    concentration: 120
     unit_conc: ng/ml
-  - time_in_seconds: 36000
+  - time_in_seconds: 21600
+    concentration: 300
+    unit_conc: ng/ml
+  - time_in_seconds: 32400
+    concentration: 600
+    unit_conc: ng/ml
+  - time_in_seconds: 37800
+    concentration: 200
+    unit_conc: ng/ml
+  - time_in_seconds: 43200
     concentration: 0
     unit_conc: ng/ml

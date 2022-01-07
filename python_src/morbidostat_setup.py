@@ -107,8 +107,7 @@ if __name__ == '__main__':
                     mics = [item["mic"] for item in run_params["drugs"].values()],
                     bottles = [item for item in run_params['bottles'].keys()],
                     pkpd_time = pkpd_time,
-                    pkpd_conc = pkpd_conc,
-                    pkpd_cycle = pkpd_cycle
+                    pkpd_conc = pkpd_conc
                     )
 
 
