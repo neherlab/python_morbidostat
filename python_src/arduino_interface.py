@@ -6,7 +6,7 @@ import numpy as np
 
 lok=threading.Lock()
 
-debug = False
+debug = True
 baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
 light_switch = 52
@@ -319,10 +319,10 @@ class morbidostat:
             digital_pin = suction_pump
             if run_time>0:
                 # switch pump on
-                self.switch_pin(digital_pin, False)
+                self.switch_pin(digital_pin, True)
                 # generate a time object to switch the pump off after
                 # the time interval necessary to pump the required volume
-                self.pump_off_threads[('waste pump',0)] = threading.Timer(run_time, self.switch_pin, args=(digital_pin, True))
+                self.pump_off_threads[('waste pump',0)] = threading.Timer(run_time, self.switch_pin, args=(digital_pin, False))
                 self.pump_off_threads[('waste pump',0)].start()
         else:
             print("Serial port is not open")
