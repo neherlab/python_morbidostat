@@ -157,13 +157,15 @@ class morbidostat(object):
     '''
     def __init__(self, vials = list(range(15)), experiment_duration = 2*60*60,
                  target_OD = 1, dilution_factor = 0.9, bug = 'tbd', drugs =None, mics=None,
-                 bottles = None, OD_dt = 30, cycle_dt = 600, experiment_name="tbd", verbose=1, pkpd_time=None, pkpd_conc=None):
+                 bottles = None, OD_dt = 30, cycle_dt = 600, experiment_name="tbd", verbose=1,
+                 pkpd_time=None, relative_curve_form=None, pkpd_burn_in_time=None, pkpd_burn_in_conc=None,
+                 pkpd_peak_conc=None):
         # the default experiment is a morbidostat measurement
         self.experiment_type = MORBIDOSTAT_EXPERIMENT
 
         # all times in seconds, define parameter second to speed up for testing
         if simulator:
-            self.second = 0.001
+            self.second = 0.0001
         else:
             self.second = 1.0
         self.verbose = verbose
@@ -251,7 +253,10 @@ class morbidostat(object):
 
         # pkpd variables
         self.pkpd_time = pkpd_time
-        self.pkpd_conc = pkpd_conc
+        self.relative_curve_form = relative_curve_form
+        self.pkpd_burn_in_time = pkpd_burn_in_time
+        self.pkpd_burn_in_conc = pkpd_burn_in_conc
+        self.pkpd_peak_conc = pkpd_peak_conc
 
     def set_vial_properties(self, vial_dict):
         self.vial_props = vial_dict
@@ -1023,9 +1028,8 @@ class morbidostat(object):
                 Interpol_res = Interpolated result given as a list.
         """
         # Set parameters
-        # print("pkpd",self.pkpd_conc, self.pkpd_time)
         time_new = np.asarray(self.pkpd_time).squeeze()
-        conc_new = np.asarray(self.pkpd_conc).squeeze()
+        conc_new = np.asarray(self.relative_curve_form).squeeze()
 
         #Create interpolation function
         f = interp1d(time_new, conc_new, kind = 'linear')
@@ -1051,7 +1055,7 @@ class morbidostat(object):
         """
         vi, fi = self.get_vial_and_drug_index(vial)
 
-        f = self.pkpd_feedback()
+        pkpd_function = self.pkpd_feedback()
 
         # Create experiment variables
         pkpd_cycle_end = self.pkpd_time[-1]
@@ -1059,11 +1063,16 @@ class morbidostat(object):
         flow_in_volume = self.dilution_volume
         vial_drug_conc = self.vial_drug_concentration[self.cycle_counter,vi, self.ndrugs-1]
         current_experiment_time = self.experiment_time()
-        interpolated_conc = f(current_experiment_time%pkpd_cycle_end)
 
-        # Calculate conc_of_flow_in_volume
-        conc_of_flow_in_volume = ((interpolated_conc*(vial_volume+flow_in_volume))-(vial_drug_conc*vial_volume))/flow_in_volume
+        if current_experiment_time < self.pkpd_burn_in_time:
+            conc_of_flow_in_volume = self.pkpd_burn_in_conc
+        else:
+            interpolated_conc = self.pkpd_peak_conc[vial]*pkpd_function((current_experiment_time-self.pkpd_burn_in_time)%pkpd_cycle_end)
+            conc_of_flow_in_volume = ((interpolated_conc*(vial_volume+flow_in_volume))-(vial_drug_conc*vial_volume))/flow_in_volume
+
         fractions, injected_concentration = self.inject_concentration(vial, flow_in_volume, conc_of_flow_in_volume, fi=fi)
 
         # Update vial concentration
         self.update_vial_concentration(vial, self.dilution_factor, injected_concentration)
+
+

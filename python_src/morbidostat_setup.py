@@ -1,10 +1,6 @@
 from morbidostat_experiment import morbidostat
 import yaml
 
-# def parse_meta(entries):
-#     return {entries[0]:entries[1]}
-
-# time_to_seconds = {"s":1, 'm':60, "h": 3600, "d": 60*60*24}
 
 def convert_time_to_seconds(dictionary):
     """Converts days, hours, minute values into seconds.
@@ -12,60 +8,38 @@ def convert_time_to_seconds(dictionary):
     Args:
         Input dictionary containing time and unit keys
             time = Integer, number of days, hours, minutes, seconds
-            unit = String with unit in days, hours, minutes, and seconds (d, h, m, s)
+            unit = String with unit in days, hours, minutes,
+            and seconds (d, h, m, s)
 
     Returns:
         Time in seconds as integer
     """
-    time_to_seconds = {"s":1, 'm':60, "h": 3600, "d": 60*60*24}
+    time_to_seconds = {"s": 1, 'm': 60, "h": 3600, "d": 60*60*24}
     try:
         return int(dictionary['value'])*int(time_to_seconds[dictionary['unit']])
     except:
         raise ValueError(f'Cannot convert time, received the following parameters {dictionary}')
 
+def pkpd_convert_time(dictionary):
+    """Converts days, hours, minute values into seconds for the pkpd program.
 
-# def parse_times(entries):
-#     k = entries[0]
-#     if len(entries)>2 and entries[2] in time_to_seconds:
-#         unit = time_to_seconds[entries[2]]
-#     else:
-#         unit = 1.0
-#     return {k:int(float(entries[1])*unit)}
+    Args:
+        Input dictionary containing time and unit keys.
+            time = Integer, number of days, hours, minutes, seconds.
+            unit = String with unit in days, hours, minutes, and seconds (d, h, m, s).
 
-# def parse_parameters(entries):
-#     return {entries[0]:float(entries[1])}
+    Returns:
+        Time in seconds as integer list.
+    """
+    time_to_seconds = {"s":1, 'm':60, "h": 3600, "d": 60*60*24}
+    pkpd_timepoints_list = []
 
-# def parse_drugs(entries):
-#     # drugname, drug unit, drug concentration
-#     return [entries[0], entries[1], float(entries[2])]
-
-# def parse_bottles(entries):run_params['experiment']['cycle_duration']
-# #     drugs = []
-#     vials = {}
-#     bottles = {}
-#     with open(fname) as config:
-#         parse_cat = None
-#         for line in config:
-#             entries = [x for x in line.strip().split(',') if x!=""]
-#             if len(entries)==0:
-#                 continue
-#             elif entries[0][0]=='#':
-#                 parse_cat = entries[0][1:]
-#             elif entries[0]!="":
-#                 if parse_cat=="meta":
-#                     parameters.update(parse_meta(entries))
-#                 elif parse_cat=="times":
-#                     parameters.update(parse_times(entries))
-#                 elif parse_cat=="parameters":
-#                     parameters.update(parse_parameters(entries))
-#                 elif parse_cat=="drugs":
-#                     drugs.append(parse_drugs(entries))
-#                 elif parse_cat=="bottles":
-#                     bottles.update(parse_bottles(entries))
-#                 elif parse_cat=="vials":
-#                     vials.update(parse_vials(entries))
-
-#     return parameters, drugs, vials, bottles
+    try:
+        for timepoint in dictionary.keys():
+            pkpd_timepoints_list.append(timepoint*time_to_seconds[dictionary[timepoint]])
+        return pkpd_timepoints_list
+    except:
+        raise ValueError(f'Cannot convert pkpd time, received the following parameters {dictionary}')
 
 
 if __name__ == '__main__':
@@ -85,11 +59,18 @@ if __name__ == '__main__':
     if run_params['experiment']['pkpd'] == True:
         with open(params.pkpd, 'r') as fi:
             pkpd_params = yaml.safe_load(fi)
-        pkpd_time = [item['time_in_seconds'] for item in pkpd_params['timepoints']]
-        pkpd_conc = [item['concentration'] for item in pkpd_params['timepoints']]
+        pkpd_time = pkpd_convert_time({item['time']:item['unit'] for item in pkpd_params['timepoints']})
+        relative_curve_form = [item['relative_curve_form'] for item in pkpd_params['timepoints']]
+        pkpd_peak_conc = {x['vial_number']-1:x['conc_max'] for x in pkpd_params['pkpd_peak_conc']}
+
+        pkpd_burn_in_time = pkpd_params.get('burn_in_seconds',0)
+        pkpd_burn_in_conc = pkpd_params.get('burn_in_concentration', 0)
+
     else:
         pkpd_time = 0
-        pkpd_conc = 0
+        relative_curve_form = 0
+        pkpd_burn_in_time = 0
+        pkpd_burn_in_conc = 0
 
 
     run_params["vials"].sort(key=lambda x:x["number"])
@@ -107,7 +88,10 @@ if __name__ == '__main__':
                     mics = [item["mic"] for item in run_params["drugs"].values()],
                     bottles = [item for item in run_params['bottles'].keys()],
                     pkpd_time = pkpd_time,
-                    pkpd_conc = pkpd_conc
+                    relative_curve_form = relative_curve_form,
+                    pkpd_burn_in_time = pkpd_burn_in_time,
+                    pkpd_burn_in_conc = pkpd_burn_in_conc,
+                    pkpd_peak_conc = pkpd_peak_conc
                     )
 
 

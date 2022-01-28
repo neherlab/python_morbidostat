@@ -1,7 +1,7 @@
 experiment:
-  name: 'second_pkpd_test'
+  name: 'third_pkpd_test'
   target_OD: 0.2
-  dilution: 0.94
+  dilution: 0.90
   pkpd: True
   bacteria:
     name: e_coli
@@ -28,11 +28,11 @@ bottles:
     unit: ng/ml
   B:
     drug: cefepime
-    concentration: 100
+    concentration: 500
     unit: ng/ml
   C:
     drug: cefepime
-    concentration: 1000
+    concentration: 2000
     unit: ng/ml
 
 vials:
