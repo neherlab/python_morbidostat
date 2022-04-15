@@ -11,7 +11,7 @@ import csv
 # Remove later
 import matplotlib.pyplot as plt
 
-simulator = True
+simulator = False
 if simulator:
     import morbidostat_simulator as morb
 else:
