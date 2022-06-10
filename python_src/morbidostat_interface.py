@@ -1,10 +1,10 @@
 import morbidostat_experiment as morbi
-import Tkinter
+import tkinter
 import threading
 import sys
 
 
-class set_up_dialog(Tkinter.Frame):
+class set_up_dialog(tkinter.Frame):
     '''
     defines a class that prompts the user for parameters of the morbidostat
     and scheduling intervals. It uses the Tkinter library to display windows
@@ -17,7 +17,7 @@ class set_up_dialog(Tkinter.Frame):
         requires a morbidostat instance as argument. will set the morbidostat
         parameters as they are read from the dialog
         '''
-        self.top= Tkinter.Toplevel()
+        self.top= tkinter.Toplevel()
         self.top.title('Morbidostat Parameters and Set-Up')
         self.morb = morb
         # instantiate a dialog for vial selection. is displayed only upon click
@@ -44,54 +44,54 @@ class set_up_dialog(Tkinter.Frame):
         for ttype,var_name in self.time_variable_names +\
                               self.string_variable_names +\
                               self.concentration_variable_names:
-            self.variables[ttype] = Tkinter.StringVar()
+            self.variables[ttype] = tkinter.StringVar()
             self.variables[ttype].set(str(self.morb.__getattribute__(ttype)))
         self.open_dialog()
-        
+
 
     def open_dialog(self):
         '''
         open a dialog window and add all the entries required
         '''
-        self.frame= Tkinter.Frame(self.top)
+        self.frame= tkinter.Frame(self.top)
         self.frame.pack()
 
         grid_counter = 0  # keeps track of the number of fields for arrangment on a grid
         self.fields= {}
         # names and annotations
         for ti,(ttype, var_name) in enumerate(self.string_variable_names):
-            Tkinter.Label(self.frame, text=var_name).grid(row=ti,column = 0, 
-                                                          sticky=Tkinter.W)
-            self.fields[ttype] = Tkinter.Entry(self.frame, textvariable = 
+            tkinter.Label(self.frame, text=var_name).grid(row=ti,column = 0,
+                                                          sticky=tkinter.W)
+            self.fields[ttype] = tkinter.Entry(self.frame, textvariable =
                                                str(self.variables[ttype]))
             self.fields[ttype].grid(row=ti+grid_counter, column=1)
 
         # concentrations and feed back variables
         grid_counter+=ti+2 # produce gap (but it doesn't make a difference)
         for ti,(ttype, var_name) in enumerate(self.concentration_variable_names):
-            Tkinter.Label(self.frame, text=var_name).grid(row=ti+grid_counter,column = 0, 
-                                                          sticky=Tkinter.W)
-            self.fields[ttype] = Tkinter.Entry(self.frame, textvariable = 
+            tkinter.Label(self.frame, text=var_name).grid(row=ti+grid_counter,column = 0,
+                                                          sticky=tkinter.W)
+            self.fields[ttype] = tkinter.Entry(self.frame, textvariable =
                                                str(self.variables[ttype]))
             self.fields[ttype].grid(row=ti+grid_counter, column=1)
 
         # scheduling variables
         grid_counter+=ti+2
         for ti,(ttype, var_name) in enumerate(self.time_variable_names):
-            Tkinter.Label(self.frame, text=var_name).grid(row=ti+grid_counter,column = 0, 
-                                                          sticky=Tkinter.W)
-            self.fields[ttype] = Tkinter.Entry(self.frame, textvariable = 
+            tkinter.Label(self.frame, text=var_name).grid(row=ti+grid_counter,column = 0,
+                                                          sticky=tkinter.W)
+            self.fields[ttype] = tkinter.Entry(self.frame, textvariable =
                                                str(self.variables[ttype]))
             self.fields[ttype].grid(row=ti+grid_counter, column=1)
 
         # add buttons to select vials or return to main dialog
         grid_counter+=ti+2
-        done_button = Tkinter.Button(self.frame, text="Done", command = self.read_dialog)
+        done_button = tkinter.Button(self.frame, text="Done", command = self.read_dialog)
         done_button.grid(row=grid_counter,column=1)
-        vial_selector_button = Tkinter.Button(self.frame, text="Select vials", fg="black", 
+        vial_selector_button = tkinter.Button(self.frame, text="Select vials", fg="black",
                         command=self.vial_selector.open_dialog)
         vial_selector_button.grid(row=grid_counter,column=0)
-        
+
 
     def read_dialog(self):
         '''
@@ -112,17 +112,17 @@ class set_up_dialog(Tkinter.Frame):
                 self.morb.__setattr__(ttype, float(self.variables[ttype].get()))
 
             # set active vials -> make a list of checked buttons
-            self.morb.vials = [vi for vi in range(15) if 
+            self.morb.vials = [vi for vi in range(15) if
                                self.vial_selector.vial_selector_variables[vi].get()]
         elif self.morb.interrupted:
             # update some parameters:
-            print "update parameters at time ", self.morb.experiment_time()
+            print("update parameters at time ", self.morb.experiment_time())
             new_experiment_length  = int(self.variables['experiment_duration'].get())
             if new_experiment_length>self.morb.experiment_duration:
                 cycles_to_add = (new_experiment_length-self.morb.experiment_duration)//self.morb.cycle_dt
                 if cycles_to_add>0:
                     self.morb.experiment_duration = new_experiment_length
-                    print "added", cycles_to_add, 'cycles. New experiment duration', self.morb.experiment_duration
+                    print("added", cycles_to_add, 'cycles. New experiment duration', self.morb.experiment_duration)
                     self.morb.add_cycles_to_data_arrays(cycles_to_add)
             new_drug_conc = (float(self.variables['drugA_concentration'].get()),
                              float(self.variables['drugB_concentration'].get()))
@@ -135,82 +135,83 @@ class set_up_dialog(Tkinter.Frame):
 
         self.morb.calculate_derived_values()
         self.top.destroy()
-        
 
-class vial_selection_dialog(Tkinter.Frame):
+
+class vial_selection_dialog(tkinter.Frame):
     '''
     defines a window that displays the vial layout with checkboxes
     '''
     def __init__(self,morb):
-        ''' 
+        '''
         requires a morbidostat instance as input to set the active vials
         '''
         self.morb = morb
         self.vial_selector_variables = []
-        # make a list of Tkinter.IntVar and set them with the current active vials 
-        for xi in xrange(5):
-            for yi in xrange(3):
+        # make a list of Tkinter.IntVar and set them with the current active vials
+        for xi in range(5):
+            for yi in range(3):
                 vi= xi*3+yi
-                self.vial_selector_variables.append(Tkinter.IntVar())
+                self.vial_selector_variables.append(tkinter.IntVar())
                 self.vial_selector_variables[-1].set(int(vi in self.morb.vials))
 
     def open_dialog(self):
         '''
         make a dialog consisting of a 5x3 array of checkboxes annd a done button
         '''
-        top = Tkinter.Toplevel()
+        top = tkinter.Toplevel()
         top.title('Active vials')
-        vial_selector_frame = Tkinter.Frame(top)
+        vial_selector_frame = tkinter.Frame(top)
         vial_selector_frame.pack()
 
         vial_selector_buttons = []
-        for xi in xrange(5):
-            for yi in xrange(3):
+        for xi in range(5):
+            for yi in range(3):
                 vi= xi*3+yi
-                vial_selector_buttons.append(Tkinter.Checkbutton
+                vial_selector_buttons.append(tkinter.Checkbutton
                                                   (vial_selector_frame, text = str(vi+1),
                                                    var=self.vial_selector_variables[vi]))
                 vial_selector_buttons[-1].grid(row=xi,column=yi)
         # add button, destroy window upon pressing, result is read out by parent
-        done_button = Tkinter.Button(vial_selector_frame, text="Done", 
-                                     command = top.destroy)        
+        done_button = tkinter.Button(vial_selector_frame, text="Done",
+                                     command = top.destroy)
         done_button.grid(row=5,column=1)
 
 
-class experiment_selector(Tkinter.Frame):
+class experiment_selector(tkinter.Frame):
     '''
-    window that opens in the very beginning and prompts the user for the 
-    type of experiment he/she wants to run. as of know there are three choices. 
+    window that opens in the very beginning and prompts the user for the
+    type of experiment he/she wants to run. as of know there are three choices.
     '''
     def __init__(self, morb):
-        self.top = Tkinter.Toplevel()
+        self.top = tkinter.Toplevel()
         self.top.title("select experiment type")
         self.morb = morb
 
-        self.experiment_types = [("Morbidostat", morbi.MORBIDOSTAT_EXPERIMENT),
-                            ("Fixed OD", morbi.FIXED_OD_EXPERIMENT),
-                            ("Growth curve", morbi.GROWTH_RATE_EXPERIMENT)]
-        self.v = Tkinter.IntVar()
+        self.experiment_types = [("Morbidostat", MORBIDOSTAT_EXPERIMENT),
+                            ("Continuous morb", CONTINUOUS_MORBIDOSTAT),
+                            ("Fixed OD", FIXED_OD_EXPERIMENT),
+                            ("Growth curve", GROWTH_RATE_EXPERIMENT)]
+        self.v = tkinter.IntVar()
         self.v.set(0) # initialize default choice
 
         self.selector_window()
 
-    
+
     def selector_window(self):
         '''
         upon window, add radiobuttons
         '''
-        self.selector_frame = Tkinter.Frame(self.top)
+        self.selector_frame = tkinter.Frame(self.top)
         self.selector_frame.pack()
         for mode, text in enumerate(self.experiment_types):
-            b = Tkinter.Radiobutton(self.selector_frame, text=text[0],
+            b = tkinter.Radiobutton(self.selector_frame, text=text[0],
                                     variable=self.v, value = mode)
-            b.pack(anchor=Tkinter.W)
+            b.pack(anchor=tkinter.W)
 
         # add button. upon pressing it, the result is read, set and the window closed
-        done_button = Tkinter.Button(self.selector_frame, text="Done", 
-                                     command = self.read_type_and_set)        
-        done_button.pack(anchor=Tkinter.E)
+        done_button = tkinter.Button(self.selector_frame, text="Done",
+                                     command = self.read_type_and_set)
+        done_button.pack(anchor=tkinter.E)
 
     def read_type_and_set(self):
         '''
@@ -219,9 +220,9 @@ class experiment_selector(Tkinter.Frame):
         mode_index = self.v.get()
         self.morb.experiment_type = self.experiment_types[mode_index][1]
         self.top.destroy()
-        
 
-class morbidostat_interface(Tkinter.Frame):
+
+class morbidostat_interface(tkinter.Frame):
     '''
     control panel of the morbidostat
     '''
@@ -232,21 +233,21 @@ class morbidostat_interface(Tkinter.Frame):
         -- Tkinter master
         -- a morbidostat instance
         '''
-        self.master = master        
+        self.master = master
         self.morb = morb
         self.all_good=True
         #self.update_status_thread = threading.Thread(target = self.update_status_strings)
         self.run_time_window()
-        
+
     def call_set_up(self):
         '''
-        called upon parameters button press. opens dialog 
+        called upon parameters button press. opens dialog
         '''
         if self.morb.running==False or self.morb.interrupted:
             set_up_dialog_window = set_up_dialog(self.morb)
             self.master.wait_window(set_up_dialog_window.top)
         else:
-            print "cannot update parameters while running"
+            print("cannot update parameters while running")
 
     def open_experiment_type_selector(self):
         '''
@@ -256,7 +257,7 @@ class morbidostat_interface(Tkinter.Frame):
             experiment_selector_dialog = experiment_selector(self.morb)
             self.master.wait_window(experiment_selector_dialog.top)
         else:
-            print "cannot update parameters while running"
+            print("cannot update parameters while running")
 
 
     def quit(self):
@@ -318,18 +319,18 @@ class morbidostat_interface(Tkinter.Frame):
         '''
         remaining_time = (self.morb.n_cycles-self.morb.cycle_counter)*self.morb.cycle_dt
         return self.seconds_to_time_str(remaining_time)
-            
+
     def elapsed_time_str(self):
         '''
         returns a formated string of the duration of the experiment so far
-        '''        
+        '''
         remaining_time = (self.morb.cycle_counter)*self.morb.cycle_dt
         return self.seconds_to_time_str(remaining_time)
 
     def remaining_cycle_time_str(self):
         '''
         returns a formated string of the time remaining in the current cycle
-        '''                
+        '''
         remaining_time = (self.morb.ODs_per_cycle-self.morb.OD_measurement_counter)*self.morb.OD_dt
         return self.seconds_to_time_str(remaining_time)
 
@@ -337,68 +338,68 @@ class morbidostat_interface(Tkinter.Frame):
         '''
         format seconds into a human readable string
         '''
-	nsec=int(nsec)
+        nsec=int(nsec)
         hours = nsec//3600
         minutes = nsec//60 - hours*60
         seconds = nsec-60*minutes-hours*3600
-        return str(hours)+'h:'+format(minutes,'02d')+'m:'+format(seconds,'02d')+'s'        
-        
+        return str(hours)+'h:'+format(minutes,'02d')+'m:'+format(seconds,'02d')+'s'
+
 
     def run_time_window(self):
         '''
         set up the window displaying status, time, and experiment type
         '''
         # prompt the user for the experiment type
-        self.run_time_frame = Tkinter.Frame(self.master)
+        self.run_time_frame = tkinter.Frame(self.master)
         self.master.title("Morbidostat control")
         self.run_time_frame.pack()
         label_font= 'Helvetica'
         var_font = 'Courier'
         fsize = 16
-    
+
         # define the annotations of the displayed info
-        self.experiment_type_label = Tkinter.Label(self.run_time_frame, text='Experiment type: ', 
-             fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
-        self.status_label = Tkinter.Label(self.run_time_frame, text='Status: ', 
-             fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
-        self.elapsed_time = Tkinter.Label(self.run_time_frame, text  = 'Elapsed time:', 
-             fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
-        self.remaining_time = Tkinter.Label(self.run_time_frame, text  = 'Remaining time:',
-             fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
-        self.remaining_cycle_time = Tkinter.Label(self.run_time_frame, text  = 'Remaining in cycle: ', 
-             fg="black", anchor=Tkinter.W, height = 2, width= 20, font=(label_font, fsize))
+        self.experiment_type_label = tkinter.Label(self.run_time_frame, text='Experiment type: ',
+             fg="black", anchor=tkinter.W, height = 2, width= 20, font=(label_font, fsize))
+        self.status_label = tkinter.Label(self.run_time_frame, text='Status: ',
+             fg="black", anchor=tkinter.W, height = 2, width= 20, font=(label_font, fsize))
+        self.elapsed_time = tkinter.Label(self.run_time_frame, text  = 'Elapsed time:',
+             fg="black", anchor=tkinter.W, height = 2, width= 20, font=(label_font, fsize))
+        self.remaining_time = tkinter.Label(self.run_time_frame, text  = 'Remaining time:',
+             fg="black", anchor=tkinter.W, height = 2, width= 20, font=(label_font, fsize))
+        self.remaining_cycle_time = tkinter.Label(self.run_time_frame, text  = 'Remaining in cycle: ',
+             fg="black", anchor=tkinter.W, height = 2, width= 20, font=(label_font, fsize))
 
         # define fields for the displayed info
-        self.experiment_type_label_val = Tkinter.Label(self.run_time_frame, 
-             text=self.morb.experiment_type, fg="black", anchor=Tkinter.W, height = 2, 
+        self.experiment_type_label_val = tkinter.Label(self.run_time_frame,
+             text=self.morb.experiment_type, fg="black", anchor=tkinter.W, height = 2,
              width= 15, font=(var_font, fsize))
-        self.status_label_val = Tkinter.Label(self.run_time_frame, 
-             text=self.status_str(), fg="black", anchor=Tkinter.W, height = 2, 
+        self.status_label_val = tkinter.Label(self.run_time_frame,
+             text=self.status_str(), fg="black", anchor=tkinter.W, height = 2,
              width= 15, font=(var_font, fsize))
-        self.elapsed_time_val = Tkinter.Label(self.run_time_frame, 
-             text  = self.elapsed_time_str(), fg="black", anchor=Tkinter.W, height = 2, 
+        self.elapsed_time_val = tkinter.Label(self.run_time_frame,
+             text  = self.elapsed_time_str(), fg="black", anchor=tkinter.W, height = 2,
              width= 15, font=(var_font, fsize))
-        self.remaining_time_val = Tkinter.Label(self.run_time_frame, 
-             text  = self.remaining_time_str(), fg="black", anchor=Tkinter.W, height = 2, 
+        self.remaining_time_val = tkinter.Label(self.run_time_frame,
+             text  = self.remaining_time_str(), fg="black", anchor=tkinter.W, height = 2,
              width= 15, font=(var_font, fsize))
-        self.remaining_cycle_time_val = Tkinter.Label(self.run_time_frame, 
-             text  = self.remaining_cycle_time_str(), fg="black", anchor=Tkinter.W, 
+        self.remaining_cycle_time_val = tkinter.Label(self.run_time_frame,
+             text  = self.remaining_cycle_time_str(), fg="black", anchor=tkinter.W,
              height = 2, width= 15, font=(var_font, fsize))
 
         # define the buttons
-        self.set_up_button = Tkinter.Button(self.run_time_frame, text="PARAMETERS", fg="black", 
+        self.set_up_button = tkinter.Button(self.run_time_frame, text="PARAMETERS", fg="black",
                                    command=self.call_set_up, height = 2)
-        self.refresh_button = Tkinter.Button(self.run_time_frame, text="REFRESH", fg="black", 
+        self.refresh_button = tkinter.Button(self.run_time_frame, text="REFRESH", fg="black",
                                    command=self.update_status_strings, height = 2)
-        self.start_button = Tkinter.Button(self.run_time_frame, text="START", fg="black", 
+        self.start_button = tkinter.Button(self.run_time_frame, text="START", fg="black",
                                    command=self.start, height = 2)
-        self.interrupt_button =Tkinter.Button(self.run_time_frame, text="INTERRUPT", fg="red", 
+        self.interrupt_button =tkinter.Button(self.run_time_frame, text="INTERRUPT", fg="red",
                                   command=self.interrupt, height = 2)
-        self.reset_button =Tkinter.Button(self.run_time_frame, text="RESET CONC.", fg="black", 
+        self.reset_button =tkinter.Button(self.run_time_frame, text="RESET CONC.", fg="black",
                                   command=self.reset, height = 2)
-        self.resume_button = Tkinter.Button(self.run_time_frame, text="RESUME", fg="black", 
+        self.resume_button = tkinter.Button(self.run_time_frame, text="RESUME", fg="black",
                                     command=self.resume, height = 2)
-        self.quit_button = Tkinter.Button(self.run_time_frame, text="QUIT", fg="black", 
+        self.quit_button = tkinter.Button(self.run_time_frame, text="QUIT", fg="black",
                                           command=self.quit, height = 2)
 
         # arrange the labels in column 0
@@ -408,7 +409,7 @@ class morbidostat_interface(Tkinter.Frame):
         self.remaining_time.grid(row=3, column=0, columnspan=2)
         self.remaining_cycle_time.grid(row=4, column=0, columnspan=2)
 
-        # arrange the information in column 1 
+        # arrange the information in column 1
         self.experiment_type_label_val.grid(row=0, column=2, columnspan=3)
         self.status_label_val.grid(row=1, column=2, columnspan=3)
         self.elapsed_time_val.grid(row=2, column=2, columnspan=3)
@@ -427,7 +428,7 @@ class morbidostat_interface(Tkinter.Frame):
         # make sure all strings are uptodate
         self.open_experiment_type_selector()
         self.update_status_strings()
-    
+
     def update_status_strings(self):
         '''
         rewrite all displayed information such that it is up-to-date
@@ -443,7 +444,7 @@ def run_GUI(morb):
     '''
     open the gui
     '''
-    root = Tkinter.Tk()
+    root = tkinter.Tk()
     app=morbidostat_interface(root, morb)
     root.mainloop()
     root.destroy()
@@ -453,11 +454,11 @@ if __name__ == '__main__':
     if len(sys.argv)==2:
         dirname = sys.argv[1]
         if not os.path.exists(dirname):
-            print "argument is not a valid directory"
+            print("argument is not a valid directory")
         else:
             mymorb.load_parameters_file(dirname.rstrip('/')+'/parameters.dat')
             mymorb.restart_from_file = dirname
     gui_thread = threading.Thread(target = run_GUI, args = (mymorb,))
     gui_thread.start()
-    
+
 

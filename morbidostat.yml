@@ -1,0 +1,10 @@
+name: morb
+channels:
+- conda-forge
+- bioconda
+- defaults
+dependencies:
+- scipy
+- ipython
+- matplotlib
+- pyserial

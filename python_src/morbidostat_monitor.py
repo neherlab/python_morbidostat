@@ -7,7 +7,7 @@ buffer_time = 10
 
 
 class morbidostat_monitor(object):
-    def __init__(self,dir_name):
+    def __init__(self,dir_name, drug="colistin"):
         if os.path.exists(dir_name):
             self.data_dir = dir_name.rstrip('/')+'/'
             self.read_parameters_file()
@@ -15,15 +15,16 @@ class morbidostat_monitor(object):
             self.scan_dt = 10
             self.OD_dir = self.data_dir+'OD/'
             self.lock_file = self.data_dir+'.lock'
-            self.data_range = 60*60
+            self.data_range = 60*1000000000000
             self.time_unit = (60,'m')
             plt.ioff()
+            self.drug = drug
             self.init_data_plot()
             self.figure_updater = threading.Thread(target = self.update_cycle)
             #self.figure_updater.daemon=True
         else:
-            print "data directory not found"
-    
+            print("data directory not found")
+
     def start(self):
         self.continue_plotting=True
         self.figure_updater.start()
@@ -42,15 +43,16 @@ class morbidostat_monitor(object):
         self.load_cycle_data()
         self.update_plot()
         #wx.CallAfter(self.update_plot)
-       
+
     def read_parameters_file(self):
         try:
-            with open(self.data_dir+'parameters.dat', 'r') as params_file:
+            param_files = sorted(glob.glob(self.data_dir+'parameters*.dat'))
+            with open(param_files[-1], 'r') as params_file:
                 for line in params_file:
                     entries = line.split()
                     try:
                         if entries[0]=='vials':
-                            self.__setattr__('vials', map(int, entries[1:]))
+                            self.__setattr__('vials', list(map(int, entries[1:])))
                             self.n_vials = len(self.vials)
                         elif entries[0]=='Experiment:':
                             self.__setattr__('experiment_name', entries[1])
@@ -87,12 +89,12 @@ class morbidostat_monitor(object):
                         elif entries[0]=='dilution_threshold:':
                             self.__setattr__('dilution_threshold', float(entries[-1]))
                         else:
-                            print "unrecognized parameter entry:",line, entries
+                            print("unrecognized parameter entry:",line, entries)
                     except:
-                        print "can't parse:", line, entries
+                        print("can't parse:", line, entries)
         except:
-            print "can't read parameters file"
-    
+            print("can't read parameters file")
+
     def load_OD_data(self):
         if not os.path.exists(self.lock_file):
             current_cycle_fname = self.OD_dir+'current_cycle.dat'
@@ -115,38 +117,38 @@ class morbidostat_monitor(object):
                     if cycle<len(OD_file_list):
                         self.OD[self.ODs_per_cycle*cycle:self.ODs_per_cycle*(cycle+1),:]=np.loadtxt(fname)
                     else:
-                        print "Cycle out of range"
+                        print("Cycle out of range")
                 if ncurr:
                     self.OD[-ncurr:,:] = current_cycle
             else:
-                print "no OD data"
+                print("no OD data")
         else:
-            print "data locked"
+            print("data locked")
 
 
     def load_cycle_data(self):
         if not os.path.exists(self.lock_file):
             try:
-                self.drug_concentration = np.loadtxt(self.data_dir+'vials_drug_concentrations.txt')
+                self.drug_concentration = np.loadtxt(self.data_dir+'vials_%s_concentrations.txt'%self.drug)
                 self.temperature= np.loadtxt(self.data_dir+'temperature.txt')
                 self.growth_rate_estimate = np.loadtxt(self.data_dir+'growth_rate_estimates.txt')
                 self.OD_estimate = np.loadtxt(self.data_dir+'cycle_OD_estimate.txt')
             except:
-                print "Cannot read cycle data"
+                print("Cannot read cycle data")
                 self.drug_concentration = np.zeros((2,len(self.vials)))
                 self.temperature = np.zeros((2,3))
                 self.growth_rate_estimate = np.zeros((2,2))
                 self.OD_estimate = np.zeros((2,2))
         else:
-            print "data locked"
+            print("data locked")
 
 
     def init_data_plot(self):
         '''
         this function sets up the plot of the OD and the antibiotic concentration
-        in each of the 
+        in each of the
         '''
-        print "init figure"
+        print("init figure")
         # there is a subplot for each vial which share axis. hence they are stacked
         n_cols = 3 # subplots are arranged in rows of 3
         n_rows = int(np.ceil(1.0*self.n_vials/n_cols))+1
@@ -160,7 +162,7 @@ class morbidostat_monitor(object):
         for vi, vial  in enumerate(self.vials):
             self.subplots[vi] = [plt.subplot(n_rows, n_cols, vi+1)]
             self.subplots[vi].append(self.subplots[vi][0].twinx())
-            self.plotted_line_objects[vi] = [self.subplots[vi][0].plot([],[], c='b')[0], 
+            self.plotted_line_objects[vi] = [self.subplots[vi][0].plot([],[], c='b')[0],
                                              self.subplots[vi][1].plot([],[], c='r', marker='o')[0]]
             self.subplots[vi][0].text(0.1, 0.9, 'vial '+str(vial+1), transform=self.subplots[vi][0].transAxes)
             #       self.subplots[vi][0].plot([0,self.experiment_duration], [self.target_OD, self.target_OD], ls='--', c='k')
@@ -236,13 +238,16 @@ class morbidostat_monitor(object):
 if __name__ == '__main__':
     if len(sys.argv)>1:
         plt.ion()
-        morb_monitor = morbidostat_monitor(sys.argv[1])
+        print((sys.argv))
+        morb_monitor = morbidostat_monitor(sys.argv[1], drug=sys.argv[2])
         plt.show()
         morb_monitor.update_all()
-        print "to refresh, type morb_monitor.update_all()"
-        print "to select displayed time window, set morb_monitor.data_range = #seconds to view"
-        print "and refresh"
+        print("to refresh, type morb_monitor.update_all()")
+        print("to select displayed time window, set morb_monitor.data_range = #seconds to view")
+        print("and refresh")
         #time.sleep(3)
         #morb_monitor.start()
     else:
-        print "name of data directory required"
+        print("name of data directory required")
+
+

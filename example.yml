@@ -1,0 +1,143 @@
+experiment:
+  name: 'third_pkpd_test'
+  target_OD: 0.2
+  dilution: 0.90
+  pkpd: True
+  bacteria:
+    name: e_coli
+    strain: MG1997
+  total_duration:
+    value: 60
+    unit: h
+  cycle_duration:
+    value: 1200
+    unit: s
+  OD_duration:
+    value: 30
+    unit: s
+
+drugs:
+  cefepime:
+    mic: 31.25
+    unit: ng/ml
+
+bottles:
+  A:
+    drug: cefepime
+    concentration: 0
+    unit: ng/ml
+  B:
+    drug: cefepime
+    concentration: 500
+    unit: ng/ml
+  C:
+    drug: cefepime
+    concentration: 2000
+    unit: ng/ml
+
+vials:
+  - number: 1
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 2
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 3
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 4
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 5
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 6
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 7
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 8
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 9
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 10
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 11
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 12
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 13
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 14
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C
+  - number: 15
+    program: PK
+    drug: cefepime
+    bottles:
+      - A
+      - B
+      - C

@@ -1,0 +1,77 @@
+burn_in_seconds: 50000
+burn_in_concentration: 0
+
+timepoints:
+  - time: 0
+    unit: s
+    relative_curve_form: 0
+  - time: 1
+    unit: h
+    relative_curve_form: 0.1
+  - time: 2
+    unit: h
+    relative_curve_form: 0.2
+  - time: 3
+    unit: h
+    relative_curve_form: 0.3
+  - time: 4
+    unit: h
+    relative_curve_form: 0.25
+  - time: 5
+    unit: h
+    relative_curve_form: 0.20
+  - time: 6
+    unit: h
+    relative_curve_form: 0.15
+  - time: 7
+    unit: h
+    relative_curve_form: 0.15
+  - time: 8
+    unit: h
+    relative_curve_form: 0.15
+  - time: 9
+    unit: h
+    relative_curve_form: 0.15
+  - time: 10
+    unit: h
+    relative_curve_form: 0.15
+  - time: 11
+    unit: h
+    relative_curve_form: 0.15
+  - time: 12
+    unit: h
+    relative_curve_form: 0
+
+concentration_unit: ng/ml
+
+pkpd_peak_conc:
+  - vial_number: 1
+    conc_max: 800
+  - vial_number: 2
+    conc_max: 580
+  - vial_number: 3
+    conc_max: 570
+  - vial_number: 4
+    conc_max: 560
+  - vial_number: 5
+    conc_max: 550
+  - vial_number: 6
+    conc_max: 540
+  - vial_number: 7
+    conc_max: 530
+  - vial_number: 8
+    conc_max: 520
+  - vial_number: 9
+    conc_max: 510
+  - vial_number: 10
+    conc_max: 0
+  - vial_number: 11
+    conc_max: 490
+  - vial_number: 12
+    conc_max: 480
+  - vial_number: 13
+    conc_max: 470
+  - vial_number: 14
+    conc_max: 460
+  - vial_number: 15
+    conc_max: 300

@@ -6,26 +6,35 @@ import numpy as np
 
 lok=threading.Lock()
 
-debug = True
+debug = False
 baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
-light_switch = 22 
-thermometer_pin = 4
-suction_pump = 3
-# dictionary mapping pumps to pins
-pumps = {'drugA': [14,15,16,17,18,19, 12, 20,21,11,10,9,8,7,6],
-         'drugB': [30,31, 32, 33,34,35, 23, 36,37, 24,25, 26,27,28,29], 
-         'medium': [53,52,51,50,49,48, 45 , 47,46, 44,43,42,41,40,39],
-#         'medium': [41,40,39,44,43,42,45,47,46,50,49,48,53,52,51],
+light_switch = 52
+thermometer_pin = 18
+suction_pump = 53 #waste pump
+pumps = {'pump1': [22, 23, 24, 25, 26,  # 1.1 - 1.5 plug 1
+                   27, 28, 29, 30, 31,  # 2.1 - 2.5 plug 2
+                   32, 33, 34, 35, 36], # 3.1 - 3.5 plug 3
+         'pump2': [37, 38, 39, 40, 41,  # 4.1 - 4.5 plug 4 (pump 2 didn't switch)
+                   42, 43, 44, 45, 46,  # 5.1 - 5.5 plug 5
+                   47, 48, 49, 50, 51], # 6.1 - 6.5 plug 6
+         'pump3': [14, 15, 16, 2, 3,      # 7.1 - 7.5 plug 7 (pin 0,1 seem to be always high)
+                   4, 5, 6, 7, 8,       # 8.1 - 8.5 plug 8
+                   9, 10, 11, 12, 13],  # 9.1 - 9.5 plug 7
          'waste': suction_pump}
 
 
 #vials_to_pins_assignment = [10,5,0, 11,6,1,12,7,2,13,8,3,14,9,4]
-vials_to_pins_assignment = [0,5,10,1,6,11,2,7,12,3,8,13,4,9,14]
+#vials_to_pins_assignment = [0,5,10,1,6,11,2,7,12,3,8,13,4,9,14]
+vials_to_pins_assignment = [10, 11, 12, 13, 14, #row 1
+                            5, 6, 7, 8, 9,      #row 2
+                            0, 1, 2, 3, 4]      #row 3
 
 
 ####
-morb_path = '/home/morbidostat/morbidostat/python_arduino/'
+# morb_path = '/home/ericulrich/Documents/Master/Masterarbeit/python_morbidostat/'
+morb_path = '/'.join(os.path.realpath(__file__).split('/')[:-2])+'/'
+print(morb_path)
 
 ############
 # load calibration parameters
@@ -34,36 +43,50 @@ pump_calibration_file_base = morb_path+'python_src/pump_calibration'
 OD_calibration_file_name = morb_path+'python_src/OD_calibration.dat'
 pump_calibration_params = {}
 for pump_type in pumps:
+    pump_calibration_params[pump_type] = 0.04*np.ones(15)
+
+for pump_type in pumps:
     fname = pump_calibration_file_base+'_'+pump_type+'.dat'
     if pump_type!='waste':
         if os.path.isfile(fname):
             try:
-                pump_calibration_params[pump_type] = np.loadtxt(fname)
+                with open(fname) as fh:
+                    for line in fh:
+                        print(line)
+                        if line[0]=='#':
+                            continue
+                        try:
+                            entries = line.strip().split('\t')
+                            vial = int(entries[0])
+                            pump_rate = float(entries[1])
+                            pump_calibration_params[pump_type][vial] = pump_rate
+                        except:
+                            print("error reading pump calibration:", line)
+                            pass
+
             except:
-                print "error opening pump calibration, all pump calibration parameters set to 2.4ml/min"
-                pump_calibration_params[pump_type] = 0.04*np.ones(15)
+                print("error opening pump calibration, all pump calibration parameters set to NaN")
         else:
-            print "no pump calibration file "+fname+", all pump calibration parameters set to 2.4 ml/min"
-            pump_calibration_params[pump_type] = 0.04*np.ones(15)
+            print("no pump calibration file, all pump calibration parameters set to NaN")
     else:
         if os.path.isfile(fname):
             try:
                 pump_calibration_params[pump_type] = np.array([np.loadtxt(fname)])
             except:
-                print "error opening pump calibration, all pump calibration parameters set to 2.4ml/min"
+                print("error opening pump calibration, all pump calibration parameters set to 2.4ml/min")
                 pump_calibration_params[pump_type] = np.array([0.04])
         else:
-            print "no pump calibration file "+fname+", all pump calibration parameters set to 2.4 ml/min"
+            print("no pump calibration file "+fname+", all pump calibration parameters set to 2.4 ml/min")
             pump_calibration_params[pump_type] = np.array([0.04])
 
 if os.path.isfile(OD_calibration_file_name):
     try:
         voltage_to_OD_params = np.loadtxt(OD_calibration_file_name)
     except:
-        print "error opening OD calibration file, all OD parameters set to zeros"
+        print("error opening OD calibration file, all OD parameters set to zeros")
         voltage_to_OD_params = np.zeros((15,2))
 else:
-    print "no OD calibration file, all OD parameters set to zero"
+    print("no OD calibration file, all OD parameters set to zero")
     voltage_to_OD_params = np.zeros((15,2))
 
 #############
@@ -80,32 +103,35 @@ class morbidostat:
 
     def atomic_serial_write(self,msg):
         with lok:
-            self.ser.write(msg)
+            self.ser.write(msg.encode('ascii'))
         return len(msg)
     def atomic_serial_readline(self):
         with lok:
-            return self.ser.readline()
+            return self.ser.readline().decode()
 
     def connect(self):
         '''
-        open a serial connection to the arduino. look for it on different 
+        open a serial connection to the arduino. look for it on different
         serial ports. if it is not found on the first ten trials, give
         up.
         '''
         try_next = True
         port_number=0
+
         while try_next:
             try:
-                self.ser = serial.Serial('/dev/ttyACM'+str(port_number), baudrate, timeout = 1.0)
+                device_name = '/dev/ttyACM'+str(port_number)
+                self.ser = serial.Serial(device_name, baudrate, timeout = 1.0)
+                #self.ser = serial.Serial('COM2',9600 ,Timeout = 1.0)
                 if self.ser.isOpen():
-                    print("Serial /dev/ttyACM"+str(port_number)+" opened")
+                    print(f"Serial {device_name} opened")
                     # wait a second to let the serial port get up to speed
                     time.sleep(1)
                     self.morbidostat_OK = True
                     try_next=False
             except:
                 if port_number<10:
-                    print("Serial /dev/ttyACM"+str(port_number)+" not available, trying next")
+                    print(f"Serial {device_name} not available, trying next")
                     try_next=True
                     port_number+=1
                 else:
@@ -119,21 +145,21 @@ class morbidostat:
             if pump<len(pump_calibration_params[pump_type]):
                 return volume/pump_calibration_params[pump_type][pump]
             else:
-                print "invalid pump number", pump, 'only ',len(pump_calibration_params[pump_type]), \
-                    'calibration parameters'
+                print("invalid pump number", pump, 'only ',len(pump_calibration_params[pump_type]), \
+                    'calibration parameters')
                 return 0
         else:
-            print "invalid pump_type", pump_type, 'not in', pump_calibration_params.keys()
+            print("invalid pump_type", pump_type, 'not in', list(pump_calibration_params.keys()))
             return 0
 
 
     def wait_until_mixed(self):
         '''
-        waits for the completion of all pumps by joining the 
+        waits for the completion of all pumps by joining the
         pump off threads
         '''
         tmp_last_pump_off_time = 0
-        for k,t in self.pump_off_threads.iteritems():
+        for k,t in self.pump_off_threads.items():
             t.join()
         time.sleep(self.mixing_time)
 
@@ -143,15 +169,15 @@ class morbidostat:
         '''
         if self.morbidostat_OK and self.ser.isOpen():
             # wait for all threads to finish
-            while any([t.is_alive() for k,t in self.pump_off_threads.iteritems()]):
+            while any([t.is_alive() for k,t in self.pump_off_threads.items()]):
                 print("\n Before disconnecting waiting for ")
-                for k,t in self.pump_off_threads.iteritems():
+                for k,t in self.pump_off_threads.items():
                     if t.is_alive():
-                        print(str(k)+ "\tto finish") 
+                        print(str(k)+ "\tto finish")
                 time.sleep(1)
             self.ser.close()
             self.morbidostat_OK=False
-            
+
     def pump_to_pin(self, pump_type, pump_number):
         assert pump_type in pumps, "Bad pump type: "+str(pump_type)
         assert pump_number>=0 and pump_number<15, "Bad pump number, got "+str(pump_number)
@@ -164,7 +190,7 @@ class morbidostat:
 
     def voltage_to_OD(self,vial, mean_val, std_val):
         if mean_val is None:
-            print "got None instead of an AD output for vial",vial
+            print("got None instead of an AD output for vial",vial)
             return 0,0
         else:
             ODval = voltage_to_OD_params[vial,0]*mean_val+voltage_to_OD_params[vial,1]
@@ -174,7 +200,7 @@ class morbidostat:
     def measure_OD(self, vial, n_measurements=1, dt=10, switch_light_off=True):
         '''
         measure the OD at the specified vial n_measurement times with a time lag
-        of dt milli seconds between measurements. 
+        of dt milli seconds between measurements.
         params:
         ser: open serial port to communicate with the arduino
         vial: number of the vial (or more precisely the A/D it is attached to (<16)
@@ -187,12 +213,12 @@ class morbidostat:
 
     def measure_voltage(self,vial, n_measurements=1, dt=10, switch_light_off=True):
         analog_pin = self.vial_to_pin(vial)
-        return self.measure_voltage_pin(analog_pin, n_measurements, dt, switch_light_off)	
+        return self.measure_voltage_pin(analog_pin, n_measurements, dt, switch_light_off)
 
     def measure_voltage_pin(self, analog_pin, n_measurements=1, dt=10, switch_light_off=True):
         '''
         measure the voltage at specified pin n_measurement times with a time lag
-        of dt milli seconds between measurements. 
+        of dt milli seconds between measurements.
         params:
         ser: open serial port to communicate with the arduino
         vial: number of the vial (or more precisely the A/D it is attached to (<16)
@@ -207,18 +233,18 @@ class morbidostat:
 
             bytes_written = self.atomic_serial_write(command_str)
             if debug:
-                print(str(time.time())+" out: "+command_str[:-1] + ' bytes_written: '+str(bytes_written)) 
+                print((str(time.time())+" out: "+command_str[:-1] + ' bytes_written: '+str(bytes_written)))
 
             # wait and read the response of the arduino
             time_delay = ((n_measurements-1)*dt + 10.0)*0.001  #seconds
             time.sleep(time_delay)
             if debug:
-                print self.ser.inWaiting()
+                print(self.ser.inWaiting())
             measurement = self.atomic_serial_readline()
             if debug:
-                print(str(time.time())+" in: "+measurement) 
+                print((str(time.time())+" in: "+measurement))
 
-            if switch_light_off:  
+            if switch_light_off:
                 self.switch_light(False) # switch IR LEDs off
             # parse the input
             entries = measurement.split()
@@ -232,11 +258,11 @@ class morbidostat:
         else:
             print("Serial port is not open")
 
-    def inject_volume(self, pump_type='medium', pump_number=0, volume=0.1):
+    def inject_volume(self, pump_type='pump2', pump_number=0, volume=0.1, conc=None):
         '''
         run a specific pump to inject a given volume
         params:
-        pump_type: one of "medium", "drugA" and "drugB"
+        pump_type: one of "medium", "pump1" and "pump3"
         pump_number: number of the pump to be switched on (0-15)
         volume: volume to be added in ml
         '''
@@ -258,11 +284,11 @@ class morbidostat:
         return run_time
 
 
-    def run_pump(self,pump_type='medium', pump_number=0, run_time=0.1):
+    def run_pump(self,pump_type='pump2', pump_number=0, run_time=0.1):
         '''
         run a specific pump for a given amount of time
         params:
-        pump_type: one of "medium", "drugA" and "drugB"
+        pump_type: one of "medium", "pump1" and "pump3"
         pump_number: number of the pump to be switched on (0-15)
         time: time to run the pump in seconds
         '''
@@ -270,13 +296,18 @@ class morbidostat:
             digital_pin = self.pump_to_pin(pump_type, pump_number)
             if run_time>0:
                 # switch pump on
-                self.switch_pin(digital_pin, False)
-                # generate a time object to switch the pump off after 
+                self.switch_pin(digital_pin, True)
+                # generate a time object to switch the pump off after
                 # the time interval necessary to pump the required volume
-                self.pump_off_threads[(pump_type,pump_number)] = threading.Timer(run_time, self.switch_pin, args=(digital_pin, True))
+                self.pump_off_threads[(pump_type,pump_number)] = threading.Timer(run_time, self.switch_pin, args=(digital_pin, False))
                 self.pump_off_threads[(pump_type,pump_number)].start()
         else:
             print("Serial port is not open")
+
+    def reset_arduino(self):
+        command_str = 'R'+'\n'
+        self.atomic_serial_write(command_str)
+        print("Resetting arduino")
 
     def run_waste_pump(self, run_time=0.1):
         '''
@@ -289,7 +320,7 @@ class morbidostat:
             if run_time>0:
                 # switch pump on
                 self.switch_pin(digital_pin, True)
-                # generate a time object to switch the pump off after 
+                # generate a time object to switch the pump off after
                 # the time interval necessary to pump the required volume
                 self.pump_off_threads[('waste pump',0)] = threading.Timer(run_time, self.switch_pin, args=(digital_pin, False))
                 self.pump_off_threads[('waste pump',0)].start()
@@ -308,12 +339,12 @@ class morbidostat:
         bytes_written = self.atomic_serial_write(command_str)
 
         if debug:
-            print(str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)) 
+            print((str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)))
 
         # wait for reply and verify
         response = self.atomic_serial_readline()
         if debug:
-            print(str(time.time())+" in: "+response) 
+            print((str(time.time())+" in: "+response))
 
         # parse the response and verify that the pump was set to the correct state
         entries = response.split()
@@ -322,8 +353,9 @@ class morbidostat:
                 print("pin "+str(pin_number)+" in wrong state\nArduino response")
                 print(response)
         else:
+            self.reset_arduino()
             print("switch_pin received bad response:")
-            print response
+            print(response)
 
     def switch_light(self, state):
         '''
@@ -344,8 +376,8 @@ class morbidostat:
         command_str = 'C\n'
         temperature_conversion_delay = 1.0
         bytes_written = self.atomic_serial_write(command_str)
-        self.temperature_thread = threading.Timer(temperature_conversion_delay, 
-                                                  self.read_temperature, 
+        self.temperature_thread = threading.Timer(temperature_conversion_delay,
+                                                  self.read_temperature,
                                                   args=(switch_light_off,))
         self.temperature_thread.start()
 
@@ -354,18 +386,18 @@ class morbidostat:
         command_str = 'T\n'
         bytes_written = self.atomic_serial_write(command_str)
         if debug:
-            print(str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)) 
+            print((str(time.time())+" out: "+command_str[:-1]+ ' bytes_written: '+str(bytes_written)))
 
         # wait for reply and verify
         response = self.atomic_serial_readline()
         if debug:
-            print(str(time.time())+" in: "+response) 
+            print((str(time.time())+" in: "+response))
 
         entries = response.split()
         temp1, temp2 = float(entries[1]), float(entries[2])
         self.temperatures = (temp1, temp2)
         if debug:
-            print "temperatures:",self.temperatures
+            print("temperatures:",self.temperatures)
         if switch_light_off:
             self.switch_light(False)
 
@@ -374,6 +406,7 @@ class morbidostat:
 # END interface class
 #################################################################
 
+"""
 def measure_self_heating(morb, vials = range(15), total_time = 180, dt = 1):
     '''
     expects and morbidostat as argument, measures voltage every
@@ -407,7 +440,7 @@ def measure_recovery(morb, vials = range(15), total_time = 180, dt = 5):
         print t, time.time()
         for vi,vial in enumerate(vials):
             measurements.append(morb.measure_voltage(vial,dt=0, switch_light_off=False)[0])
-        morb.switch_light(False)        
+        morb.switch_light(False)
         if ti<voltage.shape[0]:
             voltage[ti,0]=t
             voltage[ti,1:] = measurements
@@ -425,4 +458,5 @@ def take_temperature_profile(morb, total_time = 600, dt=10):
             temperatures[ti,0]=t
             temperatures[ti,1:] = morb.temperatures
     return temperatures
-    
+"""
+
