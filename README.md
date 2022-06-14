@@ -33,8 +33,6 @@ plt.show()
 The routine will save a file OD_calibration.dat in python_src,
 and a file voltage_measurements_YYYYMMDD.dat in the data directory
 
-
-######################################################################
 ### 2. DISPLAYING EXPERIMENTS
 
 1. Open a new terminal by right click on the Terminal button on the left.
@@ -53,7 +51,6 @@ morb_monitor.update_all()
 morb_monitor.data_range = number_of_seconds_you_want_to_see
 morb_monitor.update_all()
 ```
-######################################################################
 ### 3. RUNNING AN EXPERIMENT
 
 1. Open a new terminal by right click on the Terminal button on the left.
@@ -66,17 +63,13 @@ morb_monitor.update_all()
 5. To select the active vials, click on vial selector. Uncheck any vials not in use and press "DONE".
 6. Start the experiment by pressing "START".
 
-
-
-#####################################################################
-### 4. adding changes to the version control (i.e. after OD calibration)
+### 4. Adding changes to the version control (i.e. after OD calibration)
 
 1. Type:
 ```
 git commit -a -m "A useful message explaining why this change is necessary"
 ```
 
-################################################################
 ### 5. Pump calibration
 ```
 cd python_src
