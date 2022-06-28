@@ -8,21 +8,21 @@ This code repository drives the current version of the morbidostat of the NeherL
 
 ### Table of contents
 * [1. Starting a morbidostat run](#1-starting-a-morbidostat-run)
-    *a. Classic morbidostat experiments
-    *b. Pharmacokinetic, pharmacodynamic expeiments (PKPD)
+    * a. Classic morbidostat experiments
+    * b. Pharmacokinetic, pharmacodynamic expeiments (PKPD)
 * [2. Displaying experiments](#2-displaying-experiments)
 * [3. Optical density (OD) calibration](#3-optical-density-od-calibration)
 * [4. Pump calibration](#4-pump-calibration)
 * [5. Additional commands](#5-additional-commands)
-    *5.1. Classic morbidostat experiments
-    *5.2. Classic morbidostat experiments
-    *5.3. Classic morbidostat experiments
-    *5.4. Classic morbidostat experiments
-    *5.5. Classic morbidostat experiments
-    *5.6. Classic morbidostat experiments
-    *5.7. Classic morbidostat experiments
-    *5.8. Classic morbidostat experiments
-* [6. Starting a morbidostat run](#6-adding-changes-to-the-version-control-ie-after-od-calibration)
+    * 5.1. Classic morbidostat experiments
+    * 5.2. Classic morbidostat experiments
+    * 5.3. Classic morbidostat experiments
+    * 5.4. Classic morbidostat experiments
+    * 5.5. Classic morbidostat experiments
+    * 5.6. Classic morbidostat experiments
+    * 5.7. Classic morbidostat experiments
+    * 5.8. Classic morbidostat experiments
+* [6. Adding changes to version control](#6-adding-changes-to-the-version-control-ie-after-od-calibration)
 
 
 #### 1. STARTING A MORBIDOSTAT RUN
