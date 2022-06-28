@@ -14,14 +14,14 @@ This code repository drives the current version of the morbidostat of the NeherL
 * [3. Optical density (OD) calibration](#3-optical-density-od-calibration)
 * [4. Pump calibration](#4-pump-calibration)
 * [5. Additional commands](#5-additional-commands)
-    * 5.1. Classic morbidostat experiments
-    * 5.2. Classic morbidostat experiments
-    * 5.3. Classic morbidostat experiments
-    * 5.4. Classic morbidostat experiments
-    * 5.5. Classic morbidostat experiments
-    * 5.6. Classic morbidostat experiments
-    * 5.7. Classic morbidostat experiments
-    * 5.8. Classic morbidostat experiments
+    * 5.1. Change dilution factor during a run
+    * 5.2. Change target OD during a run
+    * 5.3. Change cycle time during a run
+    * 5.4. Interrupt and resume an experiment during a run
+    * 5.5. Stopp an experiment
+    * 5.6. Change drug concentration of input bottles during a run
+    * 5.7. Change MIC of the strain during a run
+    * 5.8. Reset vial concentrations during a run
 * [6. Adding changes to version control](#6-adding-changes-to-the-version-control-ie-after-od-calibration)
 
 
