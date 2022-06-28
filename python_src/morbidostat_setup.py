@@ -71,6 +71,7 @@ if __name__ == '__main__':
         relative_curve_form = 0
         pkpd_burn_in_time = 0
         pkpd_burn_in_conc = 0
+        pkpd_peak_conc = 0
 
 
     run_params["vials"].sort(key=lambda x:x["number"])
