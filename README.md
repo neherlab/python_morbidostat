@@ -1,3 +1,9 @@
+<p align="center"><img src="misc/Element 2.png" alt="Morbidostat" width="600"></p>
+
+A morbidostat is an automated continuous culture machine. With wich one can study the emergence of bacterial drug tolerance and resistance over time. [Erdal Toprak et al.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3708598/)
+
+This code repository drives the current version of the morbidostat of the NeherLab ([Biozentrum, University of Basel](https://www.biozentrum.unibas.ch/research/research-groups/research-groups-a-z/overview/unit/research-group-richard-neher)). It controls the pumps, optical density measurements (OD), waste pumps and structures them into cyclic procedures.
+
 # Morbidostat user manual
 
 ### 1. OD CALIBRATION:
