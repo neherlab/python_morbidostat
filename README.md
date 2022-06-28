@@ -7,22 +7,22 @@ This code repository drives the current version of the morbidostat of the NeherL
 ## Morbidostat user manual
 
 ### Table of contents
-* [1. Starting a morbidostat run](1.-STARTING-A-MORBIDOSTAT-RUN)
-    *[a. Classic morbidostat experiments](a.-Classic-morbidostat-experiments)
-    *[b. Pharmacokinetic, pharmacodynamic expeiments (PKPD)](b.-Pharmacokinetic,-pharmacodynamic-experiments-(PKPD))
-* [2. Displaying experiments](2.-DISPLAYING-EXPERIMENTS)
-* [3. Optical density (OD) calibration](3.-OPTICAL-DENSITY-(OD)-CALIBRATION)
-* [4. Pump calibration](4.-PUMP-CALIBRATION)
-* [5. Additional commands](5.-ADDITIONAL-COMMANDS)
-    *[5.1. Classic morbidostat experiments](5.1.-Change-dilution-factor-during-a-run:)
-    *[5.2. Classic morbidostat experiments](5.2.-Change-target-OD-during-a-run:)
-    *[5.3. Classic morbidostat experiments](5.3.-Change-cycle-time-during-a-run:)
-    *[5.4. Classic morbidostat experiments](5.4.-Interrupt-and-resume-an-experiment-during-a-run:)
-    *[5.5. Classic morbidostat experiments](5.5.-Stopp-an-experiment:)
-    *[5.6. Classic morbidostat experiments](5.6.-Change-drug-concentration-of-input-bottles-during-a-run:)
-    *[5.7. Classic morbidostat experiments](5.7.-Change-MIC-of-the-strain-during-a-run:)
-    *[5.8. Classic morbidostat experiments](5.8.-Reset-vial-concentrations-during-a-run:)
-* [6. Starting a morbidostat run](6.-ADDING-CHANGES-TO-THE-VERSION-CONTROL-(I.E-AFTER-OD-CALIBRATION))
+* [1. Starting a morbidostat run](#1.-STARTING-A-MORBIDOSTAT-RUN)
+    *[a. Classic morbidostat experiments](#a.-Classic-morbidostat-experiments)
+    *[b. Pharmacokinetic, pharmacodynamic expeiments (PKPD)](#b.-Pharmacokinetic,-pharmacodynamic-experiments-(PKPD))
+* [2. Displaying experiments](#2.-DISPLAYING-EXPERIMENTS)
+* [3. Optical density (OD) calibration](#3.-OPTICAL-DENSITY-(OD)-CALIBRATION)
+* [4. Pump calibration](#4.-PUMP-CALIBRATION)
+* [5. Additional commands](#5.-ADDITIONAL-COMMANDS)
+    *[5.1. Classic morbidostat experiments](#5.1.-Change-dilution-factor-during-a-run:)
+    *[5.2. Classic morbidostat experiments](#5.2.-Change-target-OD-during-a-run:)
+    *[5.3. Classic morbidostat experiments](#5.3.-Change-cycle-time-during-a-run:)
+    *[5.4. Classic morbidostat experiments](#5.4.-Interrupt-and-resume-an-experiment-during-a-run:)
+    *[5.5. Classic morbidostat experiments](#5.5.-Stopp-an-experiment:)
+    *[5.6. Classic morbidostat experiments](#5.6.-Change-drug-concentration-of-input-bottles-during-a-run:)
+    *[5.7. Classic morbidostat experiments](#5.7.-Change-MIC-of-the-strain-during-a-run:)
+    *[5.8. Classic morbidostat experiments](#5.8.-Reset-vial-concentrations-during-a-run:)
+* [6. Starting a morbidostat run](#6.-ADDING-CHANGES-TO-THE-VERSION-CONTROL-(I.E-AFTER-OD-CALIBRATION))
 
 
 #### 1. STARTING A MORBIDOSTAT RUN
@@ -139,64 +139,64 @@ calibrate_pumps(mymorb, pump_type, dt=dt)
 These commands can be typed into the terminal shell of the running morbidostat program.
 
 5.1. Change dilution factor during a run:
-'''
+```
 morb.dilution_factor = x
-'''
+```
 
 5.2. Change target OD during a run:
-'''
+```
 morb.target_OD = x
-'''
+```
 
 5.3. Change cycle time during a run:
-'''
+```
 morb.cycle_dt = x
-'''
+```
 
 5.4. Interrupt and resume an experiment during a run:
 
 Useful during media, or antibiotic bottle exchange.
 
-'''
+```
 morb.interrupt_experiment()
 
 morb.resume_experiment()
-'''
+```
 
 5.5. Stopp an experiment:
-'''
+```
 morb.stop_experiment()
-'''
+```
 
 5.6. Change drug concentration of input bottles during a run:
 
 a. Change the first bottle:
-'''
+```
 morb..drug_concentrations[0][0] = x
-'''
+```
 
 b. Change the second bottle:
-'''
+```
 morb..drug_concentrations[1][0] = x
-'''
+```
 
 c. Change the third bottle:
-'''
+```
 morb..drug_concentrations[2][0] = x
-'''
+```
 
 5.7. Change MIC of the strain during a run:
-'''
+```
 morb.mics[0] = x
-'''
+```
 
 5.8. Reset vial concentrations during a run:
 
 Sets all vial concentrations to 0.
 
-'''
+```
 morb.reset_concentrations()
-'''
+```
 
 #### 6. ADDING CHANGES TO THE VERSION CONTROL (I.E. AFTER OD CALIBRATION)
 
