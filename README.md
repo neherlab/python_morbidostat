@@ -7,7 +7,7 @@ This code repository drives the current version of the morbidostat of the NeherL
 ## Morbidostat user manual
 
 ### Table of contents
-* [1. Starting a morbidostat run](#1.-STARTING-A-MORBIDOSTAT-RUN)
+* [1. Starting a morbidostat run](#1-starting-a-morbidostat-run)
     *[a. Classic morbidostat experiments](#a.-Classic-morbidostat-experiments)
     *[b. Pharmacokinetic, pharmacodynamic expeiments (PKPD)](#b.-Pharmacokinetic,-pharmacodynamic-experiments-(PKPD))
 * [2. Displaying experiments](#2.-DISPLAYING-EXPERIMENTS)
