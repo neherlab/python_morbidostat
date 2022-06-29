@@ -8,8 +8,8 @@ This code repository drives the current version of the morbidostat of the NeherL
 
 ### Table of contents
 * [1. Starting a morbidostat run](#1-starting-a-morbidostat-run)
-    * a. Classic morbidostat experiments
-    * b. Pharmacokinetic, pharmacodynamic expeiments (PKPD)
+    * 1.1. Classic morbidostat experiments
+    * 1.2. Pharmacokinetic, pharmacodynamic expeiments (PKPD)
 * [2. Displaying experiments](#2-displaying-experiments)
 * [3. Optical density (OD) calibration](#3-optical-density-od-calibration)
 * [4. Pump calibration](#4-pump-calibration)
@@ -56,7 +56,7 @@ Set parameters using the example.yml file. (pkpd must be set to True)
 
 Next, run the following command inside the Ipython environment:
 ```
-run python_src/morbidostat_setup.py --config example.yml --pkpd pjpd_config.yml
+run python_src/morbidostat_setup.py --config example.yml --pkpd pkpd_config.yml
 ```
 
 #### 2. DISPLAYING EXPERIMENTS
