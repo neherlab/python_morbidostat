@@ -1,15 +1,15 @@
 <p align="center"><img src="misc/Element 2.png" alt="Morbidostat" width="600"></p>
 
-A morbidostat is an automated continuous culture machine. With wich one can study the emergence of bacterial drug tolerance and resistance over time. [Erdal Toprak et al.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3708598/)
+A morbidostat is an automated continuous culture machine. With which one can study the emergence of bacterial drug tolerance and resistance over time. [Erdal Toprak et al.](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3708598/)
 
-This code repository drives the current version of the morbidostat of the NeherLab ([Biozentrum, University of Basel](https://www.biozentrum.unibas.ch/research/research-groups/research-groups-a-z/overview/unit/research-group-richard-neher)). It controls the pumps, optical density measurements (OD), waste pumps and structures them into cyclic procedures.
+This code repository drives the current version of the morbidostat of the NeherLab ([Biozentrum, University of Basel](https://www.biozentrum.unibas.ch/research/research-groups/research-groups-a-z/overview/unit/research-group-richard-neher)). It controls the pumps, optical density measurements (OD), waste pumps and structures them in a cyclic fashion.
 
 ## Morbidostat user manual
 
 ### Table of contents
 * [1. Starting a morbidostat run](#1-starting-a-morbidostat-run)
     * 1.1 Classic morbidostat experiments
-    * 1.2 Pharmacokinetic, pharmacodynamic expeiments (PKPD)
+    * 1.2 Pharmacokinetic, pharmacodynamic experiments (PKPD)
 * [2. Displaying experiments](#2-displaying-experiments)
 * [3. Optical density (OD) calibration](#3-optical-density-od-calibration)
 * [4. Pump calibration](#4-pump-calibration)
@@ -39,7 +39,7 @@ Start Ipython:
 ipython --pylab
 ```
 
-**a. Classic morbidostat experiments**
+**1.1 Classic morbidostat experiments**
 
 Set parameters using the example.yml file. (pkpd must be set to False)
 
@@ -48,11 +48,11 @@ Next, run the following command inside the Ipython environment:
 run python_src/morbidostat_setup.py --config example.yml
 ```
 
-**b. Pharmacokinetic, pharmacodynamic experiments (PKPD)**
+**1.2 Pharmacokinetic, pharmacodynamic experiments (PKPD)**
 
 Set parameters using the example.yml file. (pkpd must be set to True)
 
-> Now also set the additional parameters inside the pkpd_config.yml
+> Now also set the additional parameters inside the pkpd_config.yml file.
 
 Next, run the following command inside the Ipython environment:
 ```
@@ -61,14 +61,14 @@ run python_src/morbidostat_setup.py --config example.yml --pkpd pkpd_config.yml
 
 #### 2. DISPLAYING EXPERIMENTS
 
-1. Open a new terminal shell by a right click on the Terminal button on the left.
+1. Open a new terminal shell by a right click on the terminal button on the left.
 2. Again navigate to the python_morbidostat folder.
 2. Run the following command in the new shell:
 ```
 ./display.sh data/<EXPERIMENT_FOLDER> <ANTIBIOTIC_USED>
 ```
-3. A figure will open showing the OD of all measured vials and the temperature trajectory. (Red line = Antibiotic concentration, Blue line = OD)
-4. To update, type (inside the terminal shell):
+3. A figure will open showing the OD of all measured vials and the antibiotic concentration trajectorys. (Red line = Antibiotic concentration, Blue line = OD)
+4. To update the graph, type (inside the terminal shell):
 ```
 morb_monitor.update_all()
 ```
@@ -95,10 +95,10 @@ Then type:
 ```
 calibrate_OD()
 ```
-You will be prompted for the OD of the standard used, enter a number,
+You will be prompted for the OD of the standard used, enter a number.
 Following that, confirm that the vial is placed in the correct receptible by pressing enter.
 Repeat for 1-15.
-Repeat for all available OD standards (at least 2).
+Repeat for all available OD standards (at least 2, best betweeen 10 to 15).
 After all standards have been measured, press q.
 
 Regression statistics will be printed and a figure should open showing the gauge curves.
