@@ -1,4 +1,4 @@
-burn_in_seconds: 50000
+burn_in_seconds: 0
 burn_in_concentration: 0
 
 timepoints:
@@ -7,37 +7,37 @@ timepoints:
     relative_curve_form: 0
   - time: 1
     unit: h
-    relative_curve_form: 0.1
+    relative_curve_form: 0.5
   - time: 2
     unit: h
-    relative_curve_form: 0.2
+    relative_curve_form: 1.0
   - time: 3
     unit: h
-    relative_curve_form: 0.3
+    relative_curve_form: 0.75
   - time: 4
     unit: h
-    relative_curve_form: 0.25
+    relative_curve_form: 0.56
   - time: 5
     unit: h
-    relative_curve_form: 0.20
+    relative_curve_form: 0.42
   - time: 6
     unit: h
-    relative_curve_form: 0.15
+    relative_curve_form: 0.31
   - time: 7
     unit: h
-    relative_curve_form: 0.15
+    relative_curve_form: 0.24
   - time: 8
     unit: h
-    relative_curve_form: 0.15
+    relative_curve_form: 0.18
   - time: 9
     unit: h
-    relative_curve_form: 0.15
+    relative_curve_form: 0.13
   - time: 10
     unit: h
-    relative_curve_form: 0.15
+    relative_curve_form: 0.10
   - time: 11
     unit: h
-    relative_curve_form: 0.15
+    relative_curve_form: 0.075
   - time: 12
     unit: h
     relative_curve_form: 0
@@ -46,32 +46,32 @@ concentration_unit: ng/ml
 
 pkpd_peak_conc:
   - vial_number: 1
-    conc_max: 800
+    conc_max: 60000
   - vial_number: 2
-    conc_max: 580
+    conc_max: 60000
   - vial_number: 3
-    conc_max: 570
+    conc_max: 60000
   - vial_number: 4
-    conc_max: 560
+    conc_max: 50000
   - vial_number: 5
-    conc_max: 550
+    conc_max: 50000
   - vial_number: 6
-    conc_max: 540
+    conc_max: 50000
   - vial_number: 7
-    conc_max: 530
+    conc_max: 40000
   - vial_number: 8
-    conc_max: 520
+    conc_max: 40000
   - vial_number: 9
-    conc_max: 510
+    conc_max: 40000
   - vial_number: 10
-    conc_max: 0
+    conc_max: 30000
   - vial_number: 11
-    conc_max: 490
+    conc_max: 30000
   - vial_number: 12
-    conc_max: 480
+    conc_max: 30000
   - vial_number: 13
-    conc_max: 470
+    conc_max: 0
   - vial_number: 14
-    conc_max: 460
+    conc_max: 0
   - vial_number: 15
-    conc_max: 300
+    conc_max: 0

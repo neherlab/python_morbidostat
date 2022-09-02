@@ -1,7 +1,7 @@
 experiment:
-  name: 'third_pkpd_test'
+  name: 'Amoxicillin_2022_curvetest'
   target_OD: 0.2
-  dilution: 0.90
+  dilution: 0.92
   pkpd: True
   bacteria:
     name: e_coli
@@ -10,133 +10,133 @@ experiment:
     value: 60
     unit: h
   cycle_duration:
-    value: 1200
+    value: 900
     unit: s
   OD_duration:
     value: 30
     unit: s
 
 drugs:
-  cefepime:
-    mic: 31.25
+  Amoxicillin:
+    mic: 9000
     unit: ng/ml
 
 bottles:
   A:
-    drug: cefepime
+    drug: Amoxicillin
     concentration: 0
     unit: ng/ml
   B:
-    drug: cefepime
-    concentration: 500
+    drug: Amoxicillin
+    concentration: 20000
     unit: ng/ml
   C:
-    drug: cefepime
-    concentration: 2000
+    drug: Amoxicillin
+    concentration: 1000000
     unit: ng/ml
 
 vials:
   - number: 1
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 2
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 3
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 4
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 5
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 6
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 7
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 8
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 9
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 10
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 11
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 12
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 13
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 14
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
       - C
   - number: 15
     program: PK
-    drug: cefepime
+    drug: Amoxicillin
     bottles:
       - A
       - B
