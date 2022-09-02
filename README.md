@@ -172,17 +172,17 @@ morb.stop_experiment()
 
 a. Change the first bottle:
 ```
-morb..drug_concentrations[0][0] = x
+morb.drug_concentrations[0][0] = x
 ```
 
 b. Change the second bottle:
 ```
-morb..drug_concentrations[1][0] = x
+morb.drug_concentrations[1][0] = x
 ```
 
 c. Change the third bottle:
 ```
-morb..drug_concentrations[2][0] = x
+morb.drug_concentrations[2][0] = x
 ```
 
 5.7. Change MIC of the strain during a run:
