@@ -1,4 +1,4 @@
-burn_in_seconds: 0
+burn_in_seconds: 3600
 burn_in_concentration: 0
 
 timepoints:
@@ -46,17 +46,17 @@ concentration_unit: ng/ml
 
 pkpd_peak_conc:
   - vial_number: 1
-    conc_max: 60000
+    conc_max: 75000
   - vial_number: 2
-    conc_max: 60000
+    conc_max: 75000
   - vial_number: 3
-    conc_max: 60000
+    conc_max: 75000
   - vial_number: 4
-    conc_max: 50000
+    conc_max: 55000
   - vial_number: 5
-    conc_max: 50000
+    conc_max: 55000
   - vial_number: 6
-    conc_max: 50000
+    conc_max: 55000
   - vial_number: 7
     conc_max: 40000
   - vial_number: 8

@@ -1,5 +1,5 @@
 experiment:
-  name: 'Amoxicillin_2022_curvetest'
+  name: 'Amoxicillin_V2_full_run'
   target_OD: 0.2
   dilution: 0.92
   pkpd: True
@@ -7,7 +7,7 @@ experiment:
     name: e_coli
     strain: MG1997
   total_duration:
-    value: 60
+    value: 336
     unit: h
   cycle_duration:
     value: 900
@@ -32,7 +32,7 @@ bottles:
     unit: ng/ml
   C:
     drug: Amoxicillin
-    concentration: 1000000
+    concentration: 100000
     unit: ng/ml
 
 vials:
