@@ -262,7 +262,7 @@ class morbidostat:
         '''
         run a specific pump to inject a given volume
         params:
-        pump_type: one of "medium", "pump1" and "pump3"
+        pump_type: one of "pump1", "pump2" and "pump3"
         pump_number: number of the pump to be switched on (0-15)
         volume: volume to be added in ml
         '''
