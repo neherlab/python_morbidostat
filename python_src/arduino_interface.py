@@ -11,7 +11,7 @@ baudrate = 9600
 # arduino pin controlling the IR LEDs via a relais
 light_switch = 52
 thermometer_pin = 18
-suction_pump = 53 #waste pump
+waste_pump = 53 #waste pump
 pumps = {'pump1': [22, 23, 24, 25, 26,  # 1.1 - 1.5 plug 1
                    27, 28, 29, 30, 31,  # 2.1 - 2.5 plug 2
                    32, 33, 34, 35, 36], # 3.1 - 3.5 plug 3
@@ -21,7 +21,7 @@ pumps = {'pump1': [22, 23, 24, 25, 26,  # 1.1 - 1.5 plug 1
          'pump3': [14, 15, 16, 2, 3,      # 7.1 - 7.5 plug 7 (pin 0,1 seem to be always high)
                    4, 5, 6, 7, 8,       # 8.1 - 8.5 plug 8
                    9, 10, 11, 12, 13],  # 9.1 - 9.5 plug 7
-         'waste': suction_pump}
+         'waste': waste_pump}
 
 
 #vials_to_pins_assignment = [10,5,0, 11,6,1,12,7,2,13,8,3,14,9,4]
@@ -316,7 +316,7 @@ class morbidostat:
         time: time to run the pump in seconds
         '''
         if self.ser.isOpen():
-            digital_pin = suction_pump
+            digital_pin = waste_pump
             if run_time>0:
                 # switch pump on
                 self.switch_pin(digital_pin, True)

@@ -637,10 +637,10 @@ class morbidostat(object):
             else:
                 print("unknown experiment type:", self.experiment_type[vi])
         self.vial_drug_concentration[self.cycle_counter, -1, :] = self.experiment_time()
-        self.morb.wait_until_mixed()
+        run_time = self.morb.remove_waste(max(self.added_volumes) + self.extra_suction)
+        self.morb.wait_until_mixed(run_time)
         # remove the max of the added volumes plus some safety margin.
         # this will suck air in some vials.
-        run_time = self.morb.remove_waste(max(self.added_volumes) + self.extra_suction)
         if not simulator:
             self.morb.pump_off_threads[('waste pump',0)].join()
         self.temperatures[self.cycle_counter,-1] = t
