@@ -1,16 +1,24 @@
 # Script based on morbidostat interface by Richard Neher
-from genericpath import isfile
+from __future__ import absolute_import, division, print_function, \
+                                                    unicode_literals
 import time
 import threading
-import math
-from turtle import pu
-import serial
 import os
 import numpy as np
 
 # Import ADCPi
-from ADCPi import ADCPi
-
+try:
+    from ADCPi import ADCPi
+except ImportError:
+    print("Failed to import ADCPi from python system path")
+    print("Importing from parent folder instead")
+    try:
+        import sys
+        sys.path.append('..')
+        from ADCPi import ADCPi
+    except ImportError:
+        raise ImportError(
+            "Failed to import library from parent folder")
 
 # Import IOZero32
 try:
@@ -27,7 +35,8 @@ except ImportError:
             "Failed to import library from parent folder")
 
 #############
-# Prevent race conditions = Prevents two threads from accessing shared variables simultaneously
+# Prevent race conditions = Prevents two threads from accessing shared
+# variables simultaneously
 #############
 
 lok = threading.Lock()
@@ -36,16 +45,19 @@ lok = threading.Lock()
 # # IO Zero I2C board addresses (Have to be changed on the boards)
 # #############
 
-# i2c_IO_board01 = IOZero32(0x20)
-# i2c_IO_board02 = IOZero32(0x21)
-# i2c_IO_board03 = IOZero32(0x23)
+# For pumps1: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+i2c_IO_board01 = IOZero32(0x20)
+# For pumps1: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+i2c_IO_board02 = IOZero32(0x21)
+# For pumps1: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+i2c_IO_board03 = IOZero32(0x23)
 
 # #############
 # # ADC Pi I2C board addresses (Have to be changed on the boards)
 # #############
 
-# ADC_1 = ADCPi(0x68, 0x69, 12)
-# ADC_2 = ADCPi(0x68, 0x69, 12)
+ADC_1 = ADCPi(0x68, 0x69, 12)
+ADC_2 = ADCPi(0x6A, 0x6B, 12)
 
 # #############
 # # Waste pump pin address (Have to be changed on the boards)
@@ -68,6 +80,11 @@ pumps = {'pump1': [0, 1, 2, 3, 4, 5, 6, 7, 8,
 vials_to_pins_assignment = [1, 2, 3, 14, 15,
                             6, 7, 8, 9, 10,
                             11, 12, 13, 14, 15]
+
+# #############
+# # OD array
+# #############
+
 
 # #############
 # # morb_path = '/home/<user>/python_morbidostat/'
@@ -111,14 +128,17 @@ for pump_type in pumps:
                             entries = line.strip().split('\t')
                             vial = int(entries[0])
                             pump_rate = float(entries[1])
-                            pump_calibration_params[pump_type][vial] = pump_rate
+                            pump_calibration_params[pump_type][vial] = \
+                                pump_rate
                         except:
                             print('error reading pump calibration', line)
                             pass
             except:
-                print("error opening pump calibration, all pump calibration parameters set to NaN")
+                print("error opening pump calibration, all pump calibration\
+                       parameters set to NaN")
         else:
-            print("no pump calibration file, all pump calibration parameters set to NaN")
+            print("no pump calibration file, all pump calibration parameters\
+                   set to NaN")
     else:
         if os.path.isfile(fname):
             try:
@@ -203,7 +223,8 @@ class morbidostat:
 
         """
         assert pump_type in pumps, "Bad pump type: "+str(pump_type)
-        assert pump_number >= 0 and pump_number < 15, "Bad pump number, got " + str(pump_number)
+        assert pump_number >= 0 and pump_number < 15, "Bad pump number, got "\
+               + str(pump_number)
         return pumps[pump_type][pump_number]
 
     # Vial to pin
@@ -220,7 +241,8 @@ class morbidostat:
             print("Got None instead of an AD output for vial", vial)
             return 0, 0
         else:
-            ODval = voltage_to_OD_params[vial, 0]*mean_val + voltage_to_OD_params[vial, 1]
+            ODval = voltage_to_OD_params[vial, 0]*mean_val + \
+                    voltage_to_OD_params[vial, 1]
             ODstd = voltage_to_OD_params[vial, 0]*std_val
             return max(ODval, 0.0001), ODstd
 
@@ -246,64 +268,116 @@ class morbidostat:
                                                switch_light_off)
         return self.voltage_to_OD(vial, mean_val, std_val)
 
-#         ### Not done: Measure voltage
-#         def measure_voltage(self, vial, n_measurements=1, dt=10, switch_light_off=True):
-#             """
-#             Needs to change
-#             """
-#             print('Not done yet')
+    # Not done: Measure voltage
+    def measure_voltage(self, vial, n_measurements=1, dt=10,
+                        switch_light_off=True):
+        """
+        Not done yet, add description here
+        """
+        adc_channel = self.vial_to_pin(vial)
+        return self.measure_ADCPi_channel_voltage(adc_channel, n_measurements,
+                                                  dt, switch_light_off=True)
 
-#         ### Not done: measure voltage pin
-#         def measure_voltage_pin(self, analog_pin, n_measurements=1, dt=10, switch_light_off=True):
-#             """
-#             Needs to change
+    # Not done: measure voltage pin
+    def measure_voltage_pin(self, adc_channel, n_measurements=1, dt=10,
+                            switch_light_off=True):
+        """
+        Needs to change
 
-#             Measure the voltage at specified pin n_measurement times with a time lag
-#             of dt milli seconds between measurements.
-#             params:
-#             ser: open serial port to communicate with the arduino
-#             vial: number of the vial (or more precisely the A/D it is attached to (<16)
-#             n_measurments: number of repeated measurements to be taken (<10000)
-#             dt: time lag between measurements (<10000 ms)
-#             """
-#             print('Not done yet')
+        Measure the voltage at specified pin n_measurement times with a time
+        lag of dt milli seconds between measurements.
+        params:
+        ser: open serial port to communicate with the arduino
+        vial: number of the vial (or more precisely
+              the A/D it is attached to (<16)
+        n_measurments: number of repeated measurements to be taken (<10000)
+        dt: time lag between measurements (<10000 ms)
+        """
 
-#         ### Not done: Inject volume
-#         def inject_volume(self, pump_type='pump2', pump_number=0, volume=0.1, conc=None):
-#             """
-#             Needs to change
+        # Read the voltage measurement
+        if adc_channel > 0 and adc_channel <= 8:
+            return ADC_1.read_voltage(adc_channel)
+        elif adc_channel > 8 and adc_channel <= 16:
+            return ADC_2.read_voltage(adc_channel)
+        else:
+            print("Received non-valid adc_channel (Not between 1 and 16")
 
-#             run a specific pump to inject a given volume
-#             params:
-#             pump_type: one of "pump1", "pump2" and "pump3"
-#             pump_number: number of the pump to be switched on (0-15)
-#             volume: volume to be added in ml
-#             """
-#             print('Not done yet')
+        # Sleep 0.2 seconds before next measurement
+        # (recommended by the manufacturer)
+        time.sleep(0.2)
 
-#         ### Not done: Remove waste
-#         def remove_waste(self,msg):
-#             """
-#             Needs to change
+    # Not done: Inject volume
+    def inject_volume(self, pump_type='pump2', pump_number=0, volume=0.1,
+                      conc=None):
+        """
+        Needs to change
 
-#             run the waste pump to remove the specified volume of waste
-#             params:
-#             volume: volume to be removed in ml
-#             """
-#             print('Not done yet')
+        run a specific pump to inject a given volume
+        params:
+        pump_type: one of "pump1", "pump2" and "pump3"
+        pump_number: number of the pump to be switched on (0-15)
+        volume: volume to be added in ml
+        """
+        run_time = self.volume_to_time(pump_type, pump_number, volume)
+        if run_time > 0:
+            # run the pump for calculated time
+            self.run_pump(pump_type, pump_number, run_time)
 
-#         ### Not done: run pump
-#         def run_pump(self,pump_type='pump2', pump_number=0, run_time=0.1):
-#             """
-#             Needs to change
+# Not done: Remove waste
+    def remove_waste(self, volume=0.1):
+        """
+        Run the waste pump to remove the specified volume of waste
+        params:
+        volume: volume to be removed in ml
+        """
+        run_time = self.volume_to_time('waste', 16, volume)
+        if run_time > 0:
+            self.run_waste_pump(run_time)
+        return run_time
 
-#             Run a specific pump for a given amount of time
-#             params:
-#             pump_type: one of "medium", "pump1" and "pump3"
-#             pump_number: number of the pump to be switched on (0-15)
-#             time: time to run the pump in seconds
-#             """
-#             print('Not done yet')
+    # Not done: run pump
+    def run_pump(self, pump_type='pump2', pump_number=0, run_time=0.1):
+        """
+        Needs to change
+
+        Run a specific pump for a given amount of time
+        params:
+        pump_type: one of "medium", "pump1" and "pump3"
+        pump_number: number of the pump to be switched on (0-15)
+        time: time to run the pump in seconds
+        """
+        if pump_type == 'pump1':
+            if IOZero32.get_pin_direction(pump_number) == 1:
+                IOZero32.set_pin_direction(pump_number, 0x00)
+                i2c_IO_board01.write_pin(pump_number, 1)
+                time.sleep(run_time)
+                i2c_IO_board01.write_pin(pump_number, 0)
+            else:
+                i2c_IO_board01.write_pin(pump_number, 1)
+                time.sleep(run_time)
+                i2c_IO_board01.write_pin(pump_number, 0)
+        elif pump_type == 'pump2':
+            if IOZero32.get_pin_direction(pump_number) == 1:
+                IOZero32.set_pin_direction(pump_number, 0x00)
+                i2c_IO_board02.write_pin(pump_number, 1)
+                time.sleep(run_time)
+                i2c_IO_board02.write_pin(pump_number, 0)
+            else:
+                i2c_IO_board02.write_pin(pump_number, 1)
+                time.sleep(run_time)
+                i2c_IO_board02.write_pin(pump_number, 0)
+        elif pump_type == 'pump3':
+            if IOZero32.get_pin_direction(pump_number) == 1:
+                IOZero32.set_pin_direction(pump_number, 0x00)
+                i2c_IO_board03.write_pin(pump_number, 1)
+                time.sleep(run_time)
+                i2c_IO_board03.write_pin(pump_number, 0)
+            else:
+                i2c_IO_board03.write_pin(pump_number, 1)
+                time.sleep(run_time)
+                i2c_IO_board03.write_pin(pump_number, 0)
+        else:
+            print("Error: No correct pump type in function run_pump")
 
 #         ### Not done: reset arduino
 #         def reset_arduino(self):
