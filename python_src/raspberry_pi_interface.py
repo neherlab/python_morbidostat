@@ -2,7 +2,6 @@
 from __future__ import absolute_import, division, print_function, \
                                                     unicode_literals
 import time
-import threading
 import os
 import numpy as np
 
@@ -34,29 +33,24 @@ except ImportError:
         raise ImportError(
             "Failed to import library from parent folder")
 
-#############
-# Prevent race conditions = Prevents two threads from accessing shared
-# variables simultaneously
-#############
-
-lok = threading.Lock()
-
 # #############
 # # IO Zero I2C board addresses (Have to be changed on the boards)
 # #############
 
 # For pumps1: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
 i2c_IO_board01 = IOZero32(0x20)
-# For pumps1: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+# For pumps2: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
 i2c_IO_board02 = IOZero32(0x21)
-# For pumps1: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+# For pumps3: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
 i2c_IO_board03 = IOZero32(0x23)
 
 # #############
 # # ADC Pi I2C board addresses (Have to be changed on the boards)
 # #############
 
+# For vials 1-8
 ADC_1 = ADCPi(0x68, 0x69, 12)
+# For vials 9-15
 ADC_2 = ADCPi(0x6A, 0x6B, 12)
 
 # #############
@@ -77,14 +71,21 @@ pumps = {'pump1': [0, 1, 2, 3, 4, 5, 6, 7, 8,
                    9, 10, 11, 12, 13, 14],
          'waste': waste_pump}
 
-vials_to_pins_assignment = [1, 2, 3, 14, 15,
+
+# Assigns vials to ADC pins, example: Looking for pin of vial 12
+# vials_to_pins_assignment[12] = 12
+# Inside the functions we need to remember that the ADC boards only have 8
+# addresses, so for these vials we need to subtract 8.
+
+vials_to_pins_assignment = [1, 2, 3, 4, 5,
                             6, 7, 8, 9, 10,
                             11, 12, 13, 14, 15]
 
 # #############
-# # OD array
+# # OD LED control array (Matrix for turning of LEDs)
 # #############
 
+led_pins = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
 
 # #############
 # # morb_path = '/home/<user>/python_morbidostat/'
@@ -113,7 +114,7 @@ print("success")
 for pump_type in pumps:
     pump_calibration_params[pump_type] = 0.04*np.ones(15)
 
-# Now we do magic?
+# Read in pump calibration data into dictionaries
 for pump_type in pumps:
     fname = pump_calibration_file_base + '_' + pump_type + '.dat'
     if pump_type != 'waste':
@@ -152,6 +153,7 @@ for pump_type in pumps:
                   ", all pump calibration parameters set to 2.4 ml/min")
             pump_calibration_params[pump_type] = np.array([0.04])
 
+# Here we read in OD calibration data into a list
 if os.path.isfile(OD_calibration_file_name):
     try:
         voltage_to_OD_params = np.loadtxt(OD_calibration_file_name)
@@ -169,9 +171,7 @@ else:
 
 
 class morbidostat:
-
     def __init__(self):
-        self.pump_off_threads = {}
         self.light_state = False
         self.mixing_time = 5  # mixing time in seconds
 
@@ -237,6 +237,22 @@ class morbidostat:
 
     # Voltage to OD
     def voltage_to_OD(self, vial, mean_val, std_val):
+        """ Converts voltage read in to OD via calibration
+
+            Converts voltage from pin into OD value, by multiplying the slope
+            that was measured during the calibration with the measured voltage.
+            Then it adds the standard deviation also from the
+            calibration to it. The function also calculates
+            the std individually.
+
+            Args:
+                vial: int between 0 and 14
+                mean_val: int measured voltage
+                std_val: int measured std
+
+            Results:
+
+        """
         if mean_val is None:
             print("Got None instead of an AD output for vial", vial)
             return 0, 0
@@ -264,8 +280,8 @@ class morbidostat:
 
         adc_channel = self.vial_to_pin(vial)
         mean_val, std_val, cstr = \
-            self.measure_ADCPi_channel_voltage(adc_channel, n_measurements, dt,
-                                               switch_light_off)
+            self.measure_voltage_pin(adc_channel, n_measurements,
+                                     dt, switch_light_off)
         return self.voltage_to_OD(vial, mean_val, std_val)
 
     # Not done: Measure voltage
@@ -275,8 +291,8 @@ class morbidostat:
         Not done yet, add description here
         """
         adc_channel = self.vial_to_pin(vial)
-        return self.measure_ADCPi_channel_voltage(adc_channel, n_measurements,
-                                                  dt, switch_light_off=True)
+        return self.measure_voltage_pin(adc_channel, n_measurements,
+                                        dt, switch_light_off=True)
 
     # Not done: measure voltage pin
     def measure_voltage_pin(self, adc_channel, n_measurements=1, dt=10,
@@ -294,17 +310,24 @@ class morbidostat:
         dt: time lag between measurements (<10000 ms)
         """
 
+        stored_measurements = []
+
         # Read the voltage measurement
         if adc_channel > 0 and adc_channel <= 8:
-            return ADC_1.read_voltage(adc_channel)
+            for measurements in range(0, n_measurements, 1):
+                stored_measurements.append(ADC_1.read_voltage(adc_channel))
+                time_delay = ((n_measurements-1)*dt + 10.0)*0.001  # seconds
+                time.sleep(time_delay)
+            return np.mean(stored_measurements), np.std(stored_measurements)
         elif adc_channel > 8 and adc_channel <= 16:
-            return ADC_2.read_voltage(adc_channel)
+            adc_channel = adc_channel-8
+            for measurements in range(0, n_measurements, 1):
+                stored_measurements.append(ADC_2.read_voltage(adc_channel))
+                time_delay = ((n_measurements-1)*dt + 10.0)*0.001  # seconds
+                time.sleep(time_delay)
+            return np.mean(stored_measurements), np.std(stored_measurements)
         else:
             print("Received non-valid adc_channel (Not between 1 and 16")
-
-        # Sleep 0.2 seconds before next measurement
-        # (recommended by the manufacturer)
-        time.sleep(0.2)
 
     # Not done: Inject volume
     def inject_volume(self, pump_type='pump2', pump_number=0, volume=0.1,
@@ -378,6 +401,16 @@ class morbidostat:
                 i2c_IO_board03.write_pin(pump_number, 0)
         else:
             print("Error: No correct pump type in function run_pump")
+
+    # Not done: run waste pump
+    def run_waste_pump(self, run_time=0.1):
+        if IOZero32.get_pin_direction(15) == 1:
+            IOZero32.set_pin_direction(15, 0x00)
+            i2c_IO_board01.write_pin(15, 1)
+            time.sleep(run_time)
+            i2c_IO_board01.write_pin(15, 0)
+        else:
+            print("Error: Pumping waste function failed")
 
 #         ### Not done: reset arduino
 #         def reset_arduino(self):

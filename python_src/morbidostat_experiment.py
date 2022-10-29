@@ -15,7 +15,8 @@ simulator = False
 if simulator:
     import morbidostat_simulator as morb
 else:
-    import arduino_interface as morb
+    import raspberry_pi_interface as morb
+    # import arduino_interface as morb
 
 
 MORBIDOSTAT_EXPERIMENT = 'M'
