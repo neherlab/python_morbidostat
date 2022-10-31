@@ -172,8 +172,9 @@ else:
 
 class morbidostat:
     def __init__(self):
-        self.light_state = False # Not implemented yet
+        self.light_state = False  # Not implemented yet
         self.mixing_time = 5  # mixing time in seconds
+        self.morbidostat_OK = True  # Always true for now, used to check if setting up arduino/rasp went well
 
     # Volume to time
     def volume_to_time(self, pump_type, pump, volume):
@@ -232,6 +233,9 @@ class morbidostat:
         """
         Needs to change
         """
+
+        vial = vial + 1  # Adds plus 1 to all vials
+
         assert vial < 15, "Maximal vial number is 15, got "+str(vial)
         assert vial != 0, "Vial number cannot be 0, must be between 1 and 15"
         return vials_to_pins_assignment[vial-1]

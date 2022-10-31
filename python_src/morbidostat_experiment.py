@@ -61,9 +61,9 @@ def calibrate_OD(vials = None):
                 OKstr = input("Place OD standard in receptible "+str(vial+1)+
                                   ", press enter when done")
                 time.sleep(0.001)  #delay for 1 second to allow for heating of the diode
-                voltages[-1][vi] = calibration_morb.measure_voltage(vial, switch_light_off=True)[0]
+                voltages[-1][vi] = calibration_morb.measure_voltage(vial)[0]
                 print(vial, "measurement ", voltages[-1][vi])
-            no_valid_standard=True
+            no_valid_standard = True
 
     if len(ODs)>1:
         print("Collected "+str(len(ODs))+" OD voltage pairs, calculating voltage -> OD  conversion")
@@ -145,8 +145,9 @@ def calibrate_pumps(mymorb, pump_type, vials = None, dt = 100):
     with open(fname, 'w') as fh:
         fh.write("#vial\tpump_rate[ml/s]\n")
         for vial, r in zip(vials, pump_rate):
-#            fh.write(f"{vial}\t{r}\n")
+#           fh.write(f"{vial}\t{r}\n")
             fh.write(str(vial)+"\t" + str(r) +"\n")
+
 
 class morbidostat(object):
     '''
@@ -172,7 +173,6 @@ class morbidostat(object):
         self.verbose = verbose
         # set up the morbidostat
         self.morb = morb.morbidostat()
-        self.morbidostat_port = self.morb.connect()
         if not self.morb.morbidostat_OK:
             print("Trouble setting up morbidostat")
         # sync time units
@@ -202,7 +202,7 @@ class morbidostat(object):
         self.dilution_factor = dilution_factor
         self.drug_injection_count = [0]*len(vials)
         self.dilution_threshold = 0.09
-        self.extra_suction  = 2 # extra volume that is being sucked out of the vials [ml]
+        self.extra_suction = 2  # extra volume that is being sucked out of the vials [ml]
         self.drugs = drugs
         self.mics = mics
 
@@ -215,16 +215,16 @@ class morbidostat(object):
         self.historical_drug_concentrations = []
         self.experiment_start = 0.0
         # data acqusition specifics
-        self.n_reps=8
+        self.n_reps = 8
         self.buffer_time = 10
         # counters
         self.OD_measurement_counter = 0
         self.cycle_counter = 0
-        self.restart_from_file=None # if a directory name, resume from there.
-        #feedback parameters
+        self.restart_from_file = None  # if a directory name, resume from there.
+        # feedback parameters
         self.max_growth_fraction = 0.012     # increase antibiotics with 1.5% OD increase per cycle
         self.AB_switch_conc = 0.3          # use high concentration if culture conc is 30% of drug A
-        self.feedback_time_scale =  12       # compare antibiotic concentration to that x cycles ago
+        self.feedback_time_scale = 12       # compare antibiotic concentration to that x cycles ago
         self.saturation_threshold = 0.4   # threshold beyond which OD can't be reliable measured
         self.anticipation_threshold = 0.95  # fraction of target_OD, at which increasing antibiotics is first considered
         # diagnostic variables
@@ -356,11 +356,7 @@ class morbidostat(object):
                     if row[0] == 'experiment_duration:':
                         self.old_experiment_duration = float(row[1])
                         print('exp duration',self.old_experiment_duration)
-        #print(old_experiment_duration,old_experiment_time)
-
-
-
-
+        # print(old_experiment_duration,old_experiment_time)
 
     def add_cycles_to_data_arrays(self, cycles_to_add):
         '''
@@ -381,8 +377,8 @@ class morbidostat(object):
 
     def experiment_time(self):
         if self.restart_from_file is not None:
-            #print(time.time()+self.old_experiment_duration-self.experiment_start/self.second)
-            #print(self.old_experiment_duration)
+            # print(time.time()+self.old_experiment_duration-self.experiment_start/self.second)
+            # print(self.old_experiment_duration)
             return (time.time()-self.experiment_start+self.experiment_duration)/self.second
         else:
             return (time.time()-self.experiment_start)/self.second
@@ -611,15 +607,15 @@ class morbidostat(object):
 
     def morbidostat_cycle(self):
         t = self.experiment_time()
-        self.morb.measure_temperature(switch_light_off=True)
-        time.sleep(2.0*self.second)  # delay to allow for temperature conversion
+        # self.morb.measure_temperature(switch_light_off=True)
+        # time.sleep(2.0*self.second)  # delay to allow for temperature conversion
         self.OD_measurement_counter=0
-        self.OD_thread = threading.Thread(target = self.measure_OD_for_cycle)
+        self.measure_OD_for_cycle()
         # start thread and wait for it to finish
-        self.OD_thread.start()
-        self.OD_thread.join(timeout=(self.OD_dt+5)*self.ODs_per_cycle*self.second)
-        if self.OD_thread.is_alive():
-            print("morbidostat_cycle: OD measurement timed out")
+        # self.OD_thread.start()
+        # self.OD_thread.join(timeout=(self.OD_dt+5)*self.ODs_per_cycle*self.second)
+        # if self.OD_thread.is_alive():
+        #     print("morbidostat_cycle: OD measurement timed out")
 
         self.estimate_growth_rates()
         # keep track of volumes that are added to gauge waste removal
@@ -642,10 +638,10 @@ class morbidostat(object):
         self.morb.wait_until_mixed(run_time)
         # remove the max of the added volumes plus some safety margin.
         # this will suck air in some vials.
-        if not simulator:
-            self.morb.pump_off_threads[('waste pump',0)].join()
-        self.temperatures[self.cycle_counter,-1] = t
-        self.temperatures[self.cycle_counter,:2] = self.morb.temperatures
+        # if not simulator:
+        #     self.morb.pump_off_threads[('waste pump',0)].join()
+        # self.temperatures[self.cycle_counter,-1] = t
+        # self.temperatures[self.cycle_counter,:2] = self.morb.temperatures
 
 
     def measure_OD_for_cycle(self):
@@ -683,7 +679,7 @@ class morbidostat(object):
         '''
         t = self.experiment_time()
         self.last_OD_measurements[self.OD_measurement_counter, :] = 0
-        self.morb.switch_light(True) # switch light on
+        # self.morb.switch_light(True) # switch light on
         time.sleep(1.0*self.second)  # sleep for one second to allow for heating of LEDs
 
         index_vial_pairs = list(zip(list(range(len(self.vials))), self.vials))
@@ -701,7 +697,7 @@ class morbidostat(object):
         if self.verbose>2:
             print("OD:", ' '.join(map(str,np.round(self.last_OD_measurements[self.OD_measurement_counter, :],3))))
         self.last_OD_measurements[self.OD_measurement_counter,-1]=t
-        self.morb.switch_light(False)
+        # self.morb.switch_light(False)
 
     def estimate_growth_rates(self):
         '''
