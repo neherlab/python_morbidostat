@@ -57,7 +57,7 @@ ADC_2 = ADCPi(0x6A, 0x6B, 12)
 # # Waste pump pin address (Have to be changed on the boards)
 # #############
 
-waste_pump = 15  # waste pump
+waste_pump = 16  # waste pump
 
 # #############
 # # Pump array
@@ -172,7 +172,7 @@ else:
 
 class morbidostat:
     def __init__(self):
-        self.light_state = False
+        self.light_state = False # Not implemented yet
         self.mixing_time = 5  # mixing time in seconds
 
     # Volume to time
@@ -192,7 +192,7 @@ class morbidostat:
             Results:
                 time to pump the volume: float
         """
-        if pump_type in pump_calibration_file_base:
+        if pump_type in pump_calibration_params:
             if pump < len(pump_calibration_params[pump_type]):
                 return volume*pump_calibration_params[pump_type][pump]
             else:
@@ -232,8 +232,9 @@ class morbidostat:
         """
         Needs to change
         """
-        assert vial < 15, "maximal vial number is 15, got "+str(vial)
-        return vials_to_pins_assignment[vial]
+        assert vial < 15, "Maximal vial number is 15, got "+str(vial)
+        assert vial != 0, "Vial number cannot be 0, must be between 1 and 15"
+        return vials_to_pins_assignment[vial-1]
 
     # Voltage to OD
     def voltage_to_OD(self, vial, mean_val, std_val):
@@ -370,8 +371,8 @@ class morbidostat:
         time: time to run the pump in seconds
         """
         if pump_type == 'pump1':
-            if IOZero32.get_pin_direction(pump_number) == 1:
-                IOZero32.set_pin_direction(pump_number, 0x00)
+            if i2c_IO_board01.get_pin_direction(pump_number) == 1:
+                i2c_IO_board01.set_pin_direction(pump_number, 0x00)
                 i2c_IO_board01.write_pin(pump_number, 1)
                 time.sleep(run_time)
                 i2c_IO_board01.write_pin(pump_number, 0)
@@ -380,8 +381,8 @@ class morbidostat:
                 time.sleep(run_time)
                 i2c_IO_board01.write_pin(pump_number, 0)
         elif pump_type == 'pump2':
-            if IOZero32.get_pin_direction(pump_number) == 1:
-                IOZero32.set_pin_direction(pump_number, 0x00)
+            if i2c_IO_board02.get_pin_direction(pump_number) == 1:
+                i2c_IO_board02.set_pin_direction(pump_number, 0x00)
                 i2c_IO_board02.write_pin(pump_number, 1)
                 time.sleep(run_time)
                 i2c_IO_board02.write_pin(pump_number, 0)
@@ -390,8 +391,8 @@ class morbidostat:
                 time.sleep(run_time)
                 i2c_IO_board02.write_pin(pump_number, 0)
         elif pump_type == 'pump3':
-            if IOZero32.get_pin_direction(pump_number) == 1:
-                IOZero32.set_pin_direction(pump_number, 0x00)
+            if i2c_IO_board03.get_pin_direction(pump_number) == 1:
+                i2c_IO_board03.set_pin_direction(pump_number, 0x00)
                 i2c_IO_board03.write_pin(pump_number, 1)
                 time.sleep(run_time)
                 i2c_IO_board03.write_pin(pump_number, 0)
@@ -404,11 +405,15 @@ class morbidostat:
 
     # Not done: run waste pump
     def run_waste_pump(self, run_time=0.1):
-        if IOZero32.get_pin_direction(15) == 1:
-            IOZero32.set_pin_direction(15, 0x00)
-            i2c_IO_board01.write_pin(15, 1)
+        if i2c_IO_board01.get_pin_direction(16) == 1:
+            i2c_IO_board01.set_pin_direction(16, 0x00)
+            i2c_IO_board01.write_pin(16, 1)
             time.sleep(run_time)
-            i2c_IO_board01.write_pin(15, 0)
+            i2c_IO_board01.write_pin(16, 0)
+        elif i2c_IO_board01.get_pin_direction(16) == 0:
+            i2c_IO_board01.write_pin(16, 1)
+            time.sleep(run_time)
+            i2c_IO_board01.write_pin(16, 0)
         else:
             print("Error: Pumping waste function failed")
 
