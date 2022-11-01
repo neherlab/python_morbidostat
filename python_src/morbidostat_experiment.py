@@ -525,7 +525,6 @@ class morbidostat(object):
             self.cycle_thread.join()
 
         print("experiment has finished. disconnecting the morbidostat")
-        self.morb.disconnect()
         self.running=False
     se = stop_experiment
 

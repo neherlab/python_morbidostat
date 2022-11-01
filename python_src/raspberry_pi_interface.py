@@ -42,7 +42,8 @@ i2c_IO_board01 = IOZero32(0x20)
 # For pumps2: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
 i2c_IO_board02 = IOZero32(0x21)
 # For pumps3: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
-i2c_IO_board03 = IOZero32(0x23)
+i2c_IO_board03 = IOZero32(0x20)
+# i2c_IO_board03 = IOZero32(0x23)
 
 # #############
 # # ADC Pi I2C board addresses (Have to be changed on the boards)
@@ -51,7 +52,8 @@ i2c_IO_board03 = IOZero32(0x23)
 # For vials 1-8
 ADC_1 = ADCPi(0x68, 0x69, 12)
 # For vials 9-15
-ADC_2 = ADCPi(0x6A, 0x6B, 12)
+ADC_2 = ADCPi(0x68, 0x69, 12)
+# ADC_2 = ADCPi(0x6A, 0x6B, 12)
 
 # #############
 # # Waste pump pin address (Have to be changed on the boards)
@@ -234,9 +236,9 @@ class morbidostat:
         Needs to change
         """
 
-        vial = vial + 1  # Adds plus 1 to all vials
+        vial = vial + 1  # Adds plus 1 to all vials, needs to change
 
-        assert vial < 15, "Maximal vial number is 15, got "+str(vial)
+        assert vial <= 15, "Maximal vial number is 15, got "+str(vial)
         assert vial != 0, "Vial number cannot be 0, must be between 1 and 15"
         return vials_to_pins_assignment[vial-1]
 
@@ -284,7 +286,7 @@ class morbidostat:
         """
 
         adc_channel = self.vial_to_pin(vial)
-        mean_val, std_val, cstr = \
+        mean_val, std_val = \
             self.measure_voltage_pin(adc_channel, n_measurements,
                                      dt, switch_light_off)
         return self.voltage_to_OD(vial, mean_val, std_val)
@@ -332,7 +334,7 @@ class morbidostat:
                 time.sleep(time_delay)
             return np.mean(stored_measurements), np.std(stored_measurements)
         else:
-            print("Received non-valid adc_channel (Not between 1 and 16")
+            print("Received non-valid adc_channel (Not between 1 and 16)")
 
     # Not done: Inject volume
     def inject_volume(self, pump_type='pump2', pump_number=0, volume=0.1,
@@ -358,7 +360,7 @@ class morbidostat:
         params:
         volume: volume to be removed in ml
         """
-        run_time = self.volume_to_time('waste', 16, volume)
+        run_time = self.volume_to_time('waste', 0, volume)
         if run_time > 0:
             self.run_waste_pump(run_time)
         return run_time
@@ -426,10 +428,6 @@ class morbidostat:
 #             """
 #             Change to reset raspberry pi
 #             """
-#             print('Not done yet')
-
-#         ### Not done: run waste pump
-#         def run_waste_pump(self, run_time=0.1):
 #             print('Not done yet')
 
 #         ### Not done: switch pin
